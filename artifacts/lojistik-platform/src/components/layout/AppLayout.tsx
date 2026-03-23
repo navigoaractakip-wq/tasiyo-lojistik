@@ -17,7 +17,7 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { role, logout } = useAuth();
+  const { role, logout, user } = useAuth();
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -72,6 +72,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     { href: "/admin/users", label: "Kullanıcılar", icon: Users },
     { href: "/admin/stats", label: "Raporlar", icon: BarChart3 },
     { href: "/admin/system", label: "Sistem", icon: ShieldAlert },
+    { href: "/admin/settings", label: "Ayarlar", icon: Settings },
   ] : [
     { href: "/dashboard", label: "Kontrol Paneli", icon: LayoutDashboard },
     { href: "/dashboard/create-load", label: "Yük Ver", icon: Package },
@@ -140,16 +141,18 @@ export function AppLayout({ children }: AppLayoutProps) {
         <div className="p-4 mt-auto border-t border-sidebar-border">
           <div className="flex items-center gap-3 px-2 py-3 mb-4">
             <Avatar className="h-10 w-10 border border-sidebar-border">
-              <AvatarImage src="" />
+              <AvatarImage src={user?.avatarUrl ?? ""} />
               <AvatarFallback className="bg-sidebar-primary/20 text-sidebar-primary">
-                {role === "admin" ? "AD" : "KR"}
+                {user?.name?.slice(0, 2).toUpperCase() ?? (role === "admin" ? "AD" : "KR")}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white truncate">
-                {role === "admin" ? "Admin User" : "Borusan Lojistik"}
+                {user?.name ?? (role === "admin" ? "Admin User" : "Kurumsal")}
               </p>
-              <p className="text-xs text-sidebar-foreground/60 truncate">info@company.com</p>
+              <p className="text-xs text-sidebar-foreground/60 truncate">
+                {user?.email ?? user?.phone ?? ""}
+              </p>
             </div>
           </div>
           <Button 

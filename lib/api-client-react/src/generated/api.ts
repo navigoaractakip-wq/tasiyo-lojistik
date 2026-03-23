@@ -31,19 +31,30 @@ import type {
   ListVehiclesParams,
   Load,
   LoadListResponse,
+  LogoutResponse,
   Message,
   Notification,
   NotificationListResponse,
   Offer,
   OfferListResponse,
   SendMessageRequest,
+  SendOtpRequest,
+  SendOtpResponse,
+  SettingsResponse,
   Shipment,
   ShipmentListResponse,
+  TestEmailRequest,
+  TestEmailResponse,
+  TestSmsRequest,
+  TestSmsResponse,
   UpdateLoadRequest,
+  UpdateSettingsRequest,
   UpdateUserRequest,
   User,
   UserListResponse,
   VehicleListResponse,
+  VerifyOtpRequest,
+  VerifyOtpResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -54,6 +65,655 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Send OTP code to phone or email
+ */
+export const getSendOtpUrl = () => {
+  return `/api/auth/send-otp`;
+};
+
+export const sendOtp = async (
+  sendOtpRequest: SendOtpRequest,
+  options?: RequestInit,
+): Promise<SendOtpResponse> => {
+  return customFetch<SendOtpResponse>(getSendOtpUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sendOtpRequest),
+  });
+};
+
+export const getSendOtpMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendOtp>>,
+    TError,
+    { data: BodyType<SendOtpRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendOtp>>,
+  TError,
+  { data: BodyType<SendOtpRequest> },
+  TContext
+> => {
+  const mutationKey = ["sendOtp"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendOtp>>,
+    { data: BodyType<SendOtpRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sendOtp(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendOtpMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendOtp>>
+>;
+export type SendOtpMutationBody = BodyType<SendOtpRequest>;
+export type SendOtpMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Send OTP code to phone or email
+ */
+export const useSendOtp = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendOtp>>,
+    TError,
+    { data: BodyType<SendOtpRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendOtp>>,
+  TError,
+  { data: BodyType<SendOtpRequest> },
+  TContext
+> => {
+  return useMutation(getSendOtpMutationOptions(options));
+};
+
+/**
+ * @summary Verify OTP and get session token
+ */
+export const getVerifyOtpUrl = () => {
+  return `/api/auth/verify-otp`;
+};
+
+export const verifyOtp = async (
+  verifyOtpRequest: VerifyOtpRequest,
+  options?: RequestInit,
+): Promise<VerifyOtpResponse> => {
+  return customFetch<VerifyOtpResponse>(getVerifyOtpUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(verifyOtpRequest),
+  });
+};
+
+export const getVerifyOtpMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyOtp>>,
+    TError,
+    { data: BodyType<VerifyOtpRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof verifyOtp>>,
+  TError,
+  { data: BodyType<VerifyOtpRequest> },
+  TContext
+> => {
+  const mutationKey = ["verifyOtp"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof verifyOtp>>,
+    { data: BodyType<VerifyOtpRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return verifyOtp(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VerifyOtpMutationResult = NonNullable<
+  Awaited<ReturnType<typeof verifyOtp>>
+>;
+export type VerifyOtpMutationBody = BodyType<VerifyOtpRequest>;
+export type VerifyOtpMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Verify OTP and get session token
+ */
+export const useVerifyOtp = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyOtp>>,
+    TError,
+    { data: BodyType<VerifyOtpRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof verifyOtp>>,
+  TError,
+  { data: BodyType<VerifyOtpRequest> },
+  TContext
+> => {
+  return useMutation(getVerifyOtpMutationOptions(options));
+};
+
+/**
+ * @summary Get current authenticated user
+ */
+export const getGetMeUrl = () => {
+  return `/api/auth/me`;
+};
+
+export const getMe = async (options?: RequestInit): Promise<User> => {
+  return customFetch<User>(getGetMeUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMeQueryKey = () => {
+  return [`/api/auth/me`] as const;
+};
+
+export const getGetMeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMe>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMeQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMe>>> = ({
+    signal,
+  }) => getMe({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMe>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMeQueryResult = NonNullable<Awaited<ReturnType<typeof getMe>>>;
+export type GetMeQueryError = ErrorType<void>;
+
+/**
+ * @summary Get current authenticated user
+ */
+
+export function useGetMe<
+  TData = Awaited<ReturnType<typeof getMe>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Logout (destroy session)
+ */
+export const getLogoutUrl = () => {
+  return `/api/auth/logout`;
+};
+
+export const logout = async (
+  options?: RequestInit,
+): Promise<LogoutResponse> => {
+  return customFetch<LogoutResponse>(getLogoutUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getLogoutMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logout>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof logout>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["logout"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof logout>>,
+    void
+  > = () => {
+    return logout(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LogoutMutationResult = NonNullable<
+  Awaited<ReturnType<typeof logout>>
+>;
+
+export type LogoutMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Logout (destroy session)
+ */
+export const useLogout = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logout>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof logout>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getLogoutMutationOptions(options));
+};
+
+/**
+ * @summary Get all platform settings
+ */
+export const getGetSettingsUrl = () => {
+  return `/api/settings`;
+};
+
+export const getSettings = async (
+  options?: RequestInit,
+): Promise<SettingsResponse> => {
+  return customFetch<SettingsResponse>(getGetSettingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSettingsQueryKey = () => {
+  return [`/api/settings`] as const;
+};
+
+export const getGetSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSettingsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getSettings>>> = ({
+    signal,
+  }) => getSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSettings>>
+>;
+export type GetSettingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all platform settings
+ */
+
+export function useGetSettings<
+  TData = Awaited<ReturnType<typeof getSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSettingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update platform settings
+ */
+export const getUpdateSettingsUrl = () => {
+  return `/api/settings`;
+};
+
+export const updateSettings = async (
+  updateSettingsRequest: UpdateSettingsRequest,
+  options?: RequestInit,
+): Promise<SettingsResponse> => {
+  return customFetch<SettingsResponse>(getUpdateSettingsUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateSettingsRequest),
+  });
+};
+
+export const getUpdateSettingsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSettings>>,
+    TError,
+    { data: BodyType<UpdateSettingsRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSettings>>,
+  TError,
+  { data: BodyType<UpdateSettingsRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateSettings"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSettings>>,
+    { data: BodyType<UpdateSettingsRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateSettings(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateSettingsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSettings>>
+>;
+export type UpdateSettingsMutationBody = BodyType<UpdateSettingsRequest>;
+export type UpdateSettingsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update platform settings
+ */
+export const useUpdateSettings = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSettings>>,
+    TError,
+    { data: BodyType<UpdateSettingsRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateSettings>>,
+  TError,
+  { data: BodyType<UpdateSettingsRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateSettingsMutationOptions(options));
+};
+
+/**
+ * @summary Send a test SMS to verify Twilio configuration
+ */
+export const getTestSmsUrl = () => {
+  return `/api/settings/test-sms`;
+};
+
+export const testSms = async (
+  testSmsRequest: TestSmsRequest,
+  options?: RequestInit,
+): Promise<TestSmsResponse> => {
+  return customFetch<TestSmsResponse>(getTestSmsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(testSmsRequest),
+  });
+};
+
+export const getTestSmsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testSms>>,
+    TError,
+    { data: BodyType<TestSmsRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof testSms>>,
+  TError,
+  { data: BodyType<TestSmsRequest> },
+  TContext
+> => {
+  const mutationKey = ["testSms"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof testSms>>,
+    { data: BodyType<TestSmsRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return testSms(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TestSmsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof testSms>>
+>;
+export type TestSmsMutationBody = BodyType<TestSmsRequest>;
+export type TestSmsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Send a test SMS to verify Twilio configuration
+ */
+export const useTestSms = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testSms>>,
+    TError,
+    { data: BodyType<TestSmsRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof testSms>>,
+  TError,
+  { data: BodyType<TestSmsRequest> },
+  TContext
+> => {
+  return useMutation(getTestSmsMutationOptions(options));
+};
+
+/**
+ * @summary Send a test email to verify SMTP configuration
+ */
+export const getTestEmailUrl = () => {
+  return `/api/settings/test-email`;
+};
+
+export const testEmail = async (
+  testEmailRequest: TestEmailRequest,
+  options?: RequestInit,
+): Promise<TestEmailResponse> => {
+  return customFetch<TestEmailResponse>(getTestEmailUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(testEmailRequest),
+  });
+};
+
+export const getTestEmailMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testEmail>>,
+    TError,
+    { data: BodyType<TestEmailRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof testEmail>>,
+  TError,
+  { data: BodyType<TestEmailRequest> },
+  TContext
+> => {
+  const mutationKey = ["testEmail"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof testEmail>>,
+    { data: BodyType<TestEmailRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return testEmail(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TestEmailMutationResult = NonNullable<
+  Awaited<ReturnType<typeof testEmail>>
+>;
+export type TestEmailMutationBody = BodyType<TestEmailRequest>;
+export type TestEmailMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Send a test email to verify SMTP configuration
+ */
+export const useTestEmail = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testEmail>>,
+    TError,
+    { data: BodyType<TestEmailRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof testEmail>>,
+  TError,
+  { data: BodyType<TestEmailRequest> },
+  TContext
+> => {
+  return useMutation(getTestEmailMutationOptions(options));
+};
 
 /**
  * @summary Health check

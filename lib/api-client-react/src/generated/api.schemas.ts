@@ -336,6 +336,93 @@ export interface SendMessageRequest {
   body: string;
 }
 
+export type SendOtpRequestIdentifierType =
+  (typeof SendOtpRequestIdentifierType)[keyof typeof SendOtpRequestIdentifierType];
+
+export const SendOtpRequestIdentifierType = {
+  phone: "phone",
+  email: "email",
+} as const;
+
+export interface SendOtpRequest {
+  /** Phone number or email address */
+  identifier: string;
+  identifierType: SendOtpRequestIdentifierType;
+}
+
+export interface SendOtpResponse {
+  success: boolean;
+  message: string;
+  channel?: string;
+}
+
+export type VerifyOtpRequestIdentifierType =
+  (typeof VerifyOtpRequestIdentifierType)[keyof typeof VerifyOtpRequestIdentifierType];
+
+export const VerifyOtpRequestIdentifierType = {
+  phone: "phone",
+  email: "email",
+} as const;
+
+export interface VerifyOtpRequest {
+  identifier: string;
+  identifierType: VerifyOtpRequestIdentifierType;
+  code: string;
+}
+
+export interface VerifyOtpResponse {
+  success: boolean;
+  token?: string;
+  user?: User;
+  message: string;
+}
+
+export interface LogoutResponse {
+  success: boolean;
+}
+
+export interface PlatformSetting {
+  id: number;
+  key: string;
+  value?: string;
+  label: string;
+  description?: string;
+  group: string;
+  isSecret: boolean;
+  updatedAt: string;
+}
+
+export interface SettingsResponse {
+  settings: PlatformSetting[];
+}
+
+export type UpdateSettingsRequestSettingsItem = {
+  key: string;
+  value?: string;
+};
+
+export interface UpdateSettingsRequest {
+  settings: UpdateSettingsRequestSettingsItem[];
+}
+
+export interface TestSmsRequest {
+  phone: string;
+}
+
+export interface TestSmsResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface TestEmailRequest {
+  email: string;
+}
+
+export interface TestEmailResponse {
+  success: boolean;
+  message: string;
+}
+
 export type ListUsersParams = {
   role?: ListUsersRole;
   status?: ListUsersStatus;

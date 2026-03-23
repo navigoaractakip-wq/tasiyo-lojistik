@@ -1,0 +1,172 @@
+import { Router, type IRouter } from "express";
+import { db, platformSettingsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { sendSms, sendEmail } from "../lib/notifier";
+import {
+  GetSettingsResponse,
+  UpdateSettingsBody,
+  UpdateSettingsResponse,
+  TestSmsBody,
+  TestSmsResponse,
+  TestEmailBody,
+  TestEmailResponse,
+} from "@workspace/api-zod";
+
+const router: IRouter = Router();
+
+const DEFAULT_SETTINGS = [
+  // SMS / Twilio
+  { key: "twilio_account_sid",  label: "Twilio Account SID",   description: "Twilio hesabınızın Account SID değeri", group: "sms",   isSecret: true  },
+  { key: "twilio_auth_token",   label: "Twilio Auth Token",     description: "Twilio API Auth Token",                group: "sms",   isSecret: true  },
+  { key: "twilio_phone_number", label: "Twilio Telefon No",     description: "Mesaj gönderilecek Twilio numarası (örn: +19876543210)", group: "sms", isSecret: false },
+
+  // Email / SMTP
+  { key: "smtp_host",  label: "SMTP Sunucu",      description: "Örn: smtp.gmail.com",             group: "email", isSecret: false },
+  { key: "smtp_port",  label: "SMTP Port",         description: "Örn: 587 (TLS) veya 465 (SSL)",  group: "email", isSecret: false },
+  { key: "smtp_user",  label: "SMTP Kullanıcı",    description: "E-posta adresi",                  group: "email", isSecret: false },
+  { key: "smtp_pass",  label: "SMTP Şifre",        description: "E-posta veya uygulama şifresi",   group: "email", isSecret: true  },
+  { key: "smtp_from",  label: "Gönderen Adres",    description: 'Örn: "TaşıYo <no-reply@tasiyo.com>"', group: "email", isSecret: false },
+
+  // Platform
+  { key: "platform_name",    label: "Platform Adı",    description: "Platformun görünen adı",          group: "platform", isSecret: false },
+  { key: "platform_support_email", label: "Destek E-posta",  description: "Kullanıcıların ulaşacağı destek adresi", group: "platform", isSecret: false },
+  { key: "otp_expiry_minutes",     label: "OTP Süresi (dk)", description: "Doğrulama kodunun geçerlilik süresi",   group: "platform", isSecret: false },
+  { key: "max_otp_attempts",       label: "Maks. OTP Deneme", description: "Başarısız giriş denemesi limiti",     group: "platform", isSecret: false },
+];
+
+async function ensureDefaultSettings() {
+  const existing = await db.select().from(platformSettingsTable);
+  const existingKeys = new Set(existing.map((s) => s.key));
+
+  for (const def of DEFAULT_SETTINGS) {
+    if (!existingKeys.has(def.key)) {
+      await db.insert(platformSettingsTable).values({
+        key: def.key,
+        value: null,
+        label: def.label,
+        description: def.description,
+        group: def.group,
+        isSecret: def.isSecret,
+      });
+    }
+  }
+}
+
+function mapSetting(s: typeof platformSettingsTable.$inferSelect) {
+  return {
+    id: s.id,
+    key: s.key,
+    value: s.isSecret && s.value ? "••••••••" : (s.value ?? undefined),
+    label: s.label,
+    description: s.description ?? undefined,
+    group: s.group,
+    isSecret: s.isSecret,
+    updatedAt: s.updatedAt,
+  };
+}
+
+router.get("/settings", async (req, res): Promise<void> => {
+  await ensureDefaultSettings();
+  const settings = await db
+    .select()
+    .from(platformSettingsTable)
+    .orderBy(platformSettingsTable.group, platformSettingsTable.key);
+
+  res.json(GetSettingsResponse.parse({ settings: settings.map(mapSetting) }));
+});
+
+router.put("/settings", async (req, res): Promise<void> => {
+  const parsed = UpdateSettingsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  await ensureDefaultSettings();
+
+  for (const { key, value } of parsed.data.settings) {
+    // Skip if value is the masked placeholder
+    if (value === "••••••••") continue;
+    // Find existing
+    const [existing] = await db
+      .select()
+      .from(platformSettingsTable)
+      .where(eq(platformSettingsTable.key, key));
+
+    if (existing) {
+      await db
+        .update(platformSettingsTable)
+        .set({ value: value ?? null, updatedAt: new Date() })
+        .where(eq(platformSettingsTable.key, key));
+    } else {
+      const def = DEFAULT_SETTINGS.find((d) => d.key === key);
+      if (def) {
+        await db.insert(platformSettingsTable).values({
+          key,
+          value: value ?? null,
+          label: def.label,
+          description: def.description,
+          group: def.group,
+          isSecret: def.isSecret,
+        });
+      }
+    }
+  }
+
+  const settings = await db
+    .select()
+    .from(platformSettingsTable)
+    .orderBy(platformSettingsTable.group, platformSettingsTable.key);
+
+  res.json(UpdateSettingsResponse.parse({ settings: settings.map(mapSetting) }));
+});
+
+router.post("/settings/test-sms", async (req, res): Promise<void> => {
+  const parsed = TestSmsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, message: "Geçersiz telefon numarası." });
+    return;
+  }
+
+  const sent = await sendSms(
+    parsed.data.phone,
+    "TaşıYo — Bu bir test mesajıdır. SMS entegrasyonunuz başarıyla çalışıyor! 🚚"
+  );
+
+  res.json(
+    TestSmsResponse.parse({
+      success: sent,
+      message: sent
+        ? "Test SMS başarıyla gönderildi."
+        : "Twilio yapılandırılmamış, kod konsola yazıldı.",
+    })
+  );
+});
+
+router.post("/settings/test-email", async (req, res): Promise<void> => {
+  const parsed = TestEmailBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, message: "Geçersiz e-posta adresi." });
+    return;
+  }
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
+      <h2 style="color: #1e40af;">🚚 TaşıYo — Test E-postası</h2>
+      <p>Bu e-posta, SMTP yapılandırmanızın doğruluğunu test etmek için gönderilmiştir.</p>
+      <p style="color: #16a34a; font-weight: bold;">✅ E-posta entegrasyonunuz başarıyla çalışıyor!</p>
+    </div>`;
+
+  const sent = await sendEmail(parsed.data.email, "TaşıYo — SMTP Test E-postası", html);
+
+  res.json(
+    TestEmailResponse.parse({
+      success: sent,
+      message: sent
+        ? "Test e-postası başarıyla gönderildi."
+        : "SMTP yapılandırılmamış, içerik konsola yazıldı.",
+    })
+  );
+});
+
+export default router;

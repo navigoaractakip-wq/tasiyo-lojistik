@@ -9,6 +9,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
   - name: users
     description: User management
   - name: loads
@@ -25,7 +27,143 @@ tags:
     description: Admin panel
   - name: messages
     description: Messaging
+  - name: settings
+    description: Platform settings
 paths:
+  /auth/send-otp:
+    post:
+      operationId: sendOtp
+      tags: [auth]
+      summary: Send OTP code to phone or email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendOtpRequest"
+      responses:
+        "200":
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendOtpResponse"
+
+  /auth/verify-otp:
+    post:
+      operationId: verifyOtp
+      tags: [auth]
+      summary: Verify OTP and get session token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyOtpRequest"
+      responses:
+        "200":
+          description: Verified - returns token and user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyOtpResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout (destroy session)
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutResponse"
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get all platform settings
+      responses:
+        "200":
+          description: Platform settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+    put:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update platform settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsRequest"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+
+  /settings/test-sms:
+    post:
+      operationId: testSms
+      tags: [settings]
+      summary: Send a test SMS to verify Twilio configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestSmsRequest"
+      responses:
+        "200":
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestSmsResponse"
+
+  /settings/test-email:
+    post:
+      operationId: testEmail
+      tags: [settings]
+      summary: Send a test email to verify SMTP configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestEmailRequest"
+      responses:
+        "200":
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestEmailResponse"
+
   /healthz:
     get:
       operationId: healthCheck
@@ -1019,3 +1157,160 @@ components:
           type: string
       required:
         - body
+
+    SendOtpRequest:
+      type: object
+      properties:
+        identifier:
+          type: string
+          description: Phone number or email address
+        identifierType:
+          type: string
+          enum: [phone, email]
+      required:
+        - identifier
+        - identifierType
+
+    SendOtpResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        channel:
+          type: string
+      required:
+        - success
+        - message
+
+    VerifyOtpRequest:
+      type: object
+      properties:
+        identifier:
+          type: string
+        identifierType:
+          type: string
+          enum: [phone, email]
+        code:
+          type: string
+      required:
+        - identifier
+        - identifierType
+        - code
+
+    VerifyOtpResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    LogoutResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    PlatformSetting:
+      type: object
+      properties:
+        id:
+          type: integer
+        key:
+          type: string
+        value:
+          type: string
+        label:
+          type: string
+        description:
+          type: string
+        group:
+          type: string
+        isSecret:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - key
+        - label
+        - group
+        - isSecret
+        - updatedAt
+
+    SettingsResponse:
+      type: object
+      properties:
+        settings:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlatformSetting"
+      required:
+        - settings
+
+    UpdateSettingsRequest:
+      type: object
+      properties:
+        settings:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              value:
+                type: string
+            required:
+              - key
+      required:
+        - settings
+
+    TestSmsRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+      required:
+        - phone
+
+    TestSmsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    TestEmailRequest:
+      type: object
+      properties:
+        email:
+          type: string
+      required:
+        - email
+
+    TestEmailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message

@@ -8,6 +8,143 @@
 import * as zod from "zod";
 
 /**
+ * @summary Send OTP code to phone or email
+ */
+export const SendOtpBody = zod.object({
+  identifier: zod.string().describe("Phone number or email address"),
+  identifierType: zod.enum(["phone", "email"]),
+});
+
+export const SendOtpResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+  channel: zod.string().optional(),
+});
+
+/**
+ * @summary Verify OTP and get session token
+ */
+export const VerifyOtpBody = zod.object({
+  identifier: zod.string(),
+  identifierType: zod.enum(["phone", "email"]),
+  code: zod.string(),
+});
+
+export const VerifyOtpResponse = zod.object({
+  success: zod.boolean(),
+  token: zod.string().optional(),
+  user: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      email: zod.string(),
+      phone: zod.string().optional(),
+      role: zod.enum(["admin", "corporate", "individual", "driver"]),
+      status: zod.enum(["active", "suspended", "pending"]),
+      company: zod.string().optional(),
+      avatarUrl: zod.string().optional(),
+      rating: zod.number().optional(),
+      totalShipments: zod.number().optional(),
+      createdAt: zod.date(),
+    })
+    .optional(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Get current authenticated user
+ */
+export const GetMeResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  email: zod.string(),
+  phone: zod.string().optional(),
+  role: zod.enum(["admin", "corporate", "individual", "driver"]),
+  status: zod.enum(["active", "suspended", "pending"]),
+  company: zod.string().optional(),
+  avatarUrl: zod.string().optional(),
+  rating: zod.number().optional(),
+  totalShipments: zod.number().optional(),
+  createdAt: zod.date(),
+});
+
+/**
+ * @summary Logout (destroy session)
+ */
+export const LogoutResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Get all platform settings
+ */
+export const GetSettingsResponse = zod.object({
+  settings: zod.array(
+    zod.object({
+      id: zod.number(),
+      key: zod.string(),
+      value: zod.string().optional(),
+      label: zod.string(),
+      description: zod.string().optional(),
+      group: zod.string(),
+      isSecret: zod.boolean(),
+      updatedAt: zod.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update platform settings
+ */
+export const UpdateSettingsBody = zod.object({
+  settings: zod.array(
+    zod.object({
+      key: zod.string(),
+      value: zod.string().optional(),
+    }),
+  ),
+});
+
+export const UpdateSettingsResponse = zod.object({
+  settings: zod.array(
+    zod.object({
+      id: zod.number(),
+      key: zod.string(),
+      value: zod.string().optional(),
+      label: zod.string(),
+      description: zod.string().optional(),
+      group: zod.string(),
+      isSecret: zod.boolean(),
+      updatedAt: zod.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Send a test SMS to verify Twilio configuration
+ */
+export const TestSmsBody = zod.object({
+  phone: zod.string(),
+});
+
+export const TestSmsResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Send a test email to verify SMTP configuration
+ */
+export const TestEmailBody = zod.object({
+  email: zod.string(),
+});
+
+export const TestEmailResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

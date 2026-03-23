@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import authRouter from "./auth";
 import usersRouter from "./users";
 import loadsRouter from "./loads";
 import offersRouter from "./offers";
@@ -8,10 +9,12 @@ import vehiclesRouter from "./vehicles";
 import notificationsRouter from "./notifications";
 import adminRouter from "./admin";
 import messagesRouter from "./messages";
+import settingsRouter from "./settings";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(authRouter);
 router.use(usersRouter);
 router.use(loadsRouter);
 router.use(offersRouter);
@@ -20,5 +23,6 @@ router.use(vehiclesRouter);
 router.use(notificationsRouter);
 router.use(adminRouter);
 router.use(messagesRouter);
+router.use(settingsRouter);
 
 export default router;

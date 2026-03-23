@@ -4,6 +4,22 @@
 
 pnpm workspace monorepo using TypeScript. Full-featured Turkish logistics platform called **TaşıYo**.
 
+## Authentication
+
+- **Flow**: Phone or Email → OTP code sent (SMS via Twilio or Email via SMTP) → Verify code → Session token stored in localStorage
+- **Routes**: `POST /api/auth/send-otp`, `POST /api/auth/verify-otp`, `GET /api/auth/me`, `POST /api/auth/logout`
+- **Session storage**: `user_sessions` table in PostgreSQL (token-based, 30-day expiry)
+- **OTP storage**: `otp_codes` table (10-minute expiry, single use)
+- **Fallback**: If Twilio/SMTP not configured, OTP is logged to server console (dev mode)
+- **Platform settings**: Twilio and SMTP credentials stored in `platform_settings` DB table, editable via Admin → Ayarlar
+
+## Admin Settings Page
+
+Path: `/admin/settings` — Three sections:
+1. **SMS (Twilio)**: Account SID, Auth Token, Phone Number + Test SMS button
+2. **Email (SMTP)**: Host, Port, User, Password, From Address + Test Email button
+3. **Platform**: Platform name, support email, OTP expiry, max attempts
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces

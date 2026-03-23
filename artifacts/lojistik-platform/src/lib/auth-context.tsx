@@ -1,22 +1,96 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from "react";
+import { getMe, logout as apiLogout } from "@workspace/api-client-react";
 
-export type Role = "admin" | "corporate" | "driver" | null;
+export type Role = "admin" | "corporate" | "driver" | "individual" | null;
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  role: Role;
+  company?: string | null;
+  avatarUrl?: string | null;
+}
 
 interface AuthContextType {
+  user: AuthUser | null;
   role: Role;
-  setRole: (role: Role) => void;
+  token: string | null;
+  isLoading: boolean;
+  setToken: (token: string) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<Role>(null);
+const TOKEN_KEY = "tasiyo_auth_token";
 
-  const logout = () => setRole(null);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [token, setTokenState] = useState<string | null>(
+    () => localStorage.getItem(TOKEN_KEY)
+  );
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchMe = useCallback(async (tok: string) => {
+    try {
+      const data = await getMe({
+        headers: { Authorization: `Bearer ${tok}` },
+      });
+      setUser({
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        role: data.role as Role,
+        company: data.company,
+        avatarUrl: data.avatarUrl,
+      });
+    } catch {
+      localStorage.removeItem(TOKEN_KEY);
+      setTokenState(null);
+      setUser(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      fetchMe(token).finally(() => setIsLoading(false));
+    } else {
+      setIsLoading(false);
+    }
+  }, [token, fetchMe]);
+
+  const setToken = useCallback((tok: string) => {
+    localStorage.setItem(TOKEN_KEY, tok);
+    setTokenState(tok);
+    fetchMe(tok);
+  }, [fetchMe]);
+
+  const logout = useCallback(async () => {
+    if (token) {
+      try {
+        await apiLogout({ headers: { Authorization: `Bearer ${token}` } });
+      } catch {}
+    }
+    localStorage.removeItem(TOKEN_KEY);
+    setTokenState(null);
+    setUser(null);
+  }, [token]);
+
+  const role: Role =
+    user?.role === "individual" || user?.role === "driver" ? "driver" : (user?.role ?? null);
 
   return (
-    <AuthContext.Provider value={{ role, setRole, logout }}>
+    <AuthContext.Provider value={{ user, role, token, isLoading, setToken, logout }}>
       {children}
     </AuthContext.Provider>
   );
