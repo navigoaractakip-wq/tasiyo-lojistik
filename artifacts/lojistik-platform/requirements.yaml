@@ -1,0 +1,23 @@
+packages:
+  "framer-motion": "Animations and layout transitions for premium feel"
+  "recharts": "Admin dashboard charts and analytics visualization"
+  "date-fns": "Date formatting for shipments and load schedules"
+  "lucide-react": "High-quality icons across the platform"
+  "react-hook-form": "Robust form state management for load creation"
+  "@hookform/resolvers": "Zod integration for forms"
+  "zod": "Schema validation for forms"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility to safely merge tailwind classes"
+
+images:
+  - path: "artifacts/lojistik-platform/public/images/hero-map.png"
+    description: "Abstract stylized high-tech map background with glowing route lines and network nodes in deep dark navy blue and vibrant orange, perfect for a modern logistics dashboard"
+    aspect_ratio: "16:9"
+  - path: "artifacts/lojistik-platform/public/images/logo.png"
+    description: "Modern minimalist logo for a logistics platform called TaşıYo, featuring a stylized fast-moving geometric truck icon in vibrant orange on a transparent background"
+    aspect_ratio: "1:1"
+
+notes:
+  - "Using @workspace/api-client-react for all API queries and mutations."
+  - "Simulating mobile view for driver role using a centered max-w-md container."
+  - "Added a global AuthContext to switch between Super Admin, Corporate, and Driver roles for demo purposes."

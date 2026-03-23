@@ -1,0 +1,276 @@
+Design a **full-featured logistics platform UI/UX** including:
+
+1. Mobile App (iOS & Android) for individual users and drivers
+2. Web Dashboard for corporate users
+3. Admin Panel for system owner (super admin)
+
+The platform is a hybrid of:
+
+* Marketplace model (like load posting & bidding systems)
+* Real-time vehicle dispatch (Uber-like matching)
+* Live GPS vehicle tracking system
+
+Language: **Turkish (ALL UI TEXT MUST BE IN TURKISH)**
+
+---
+
+# 🎯 DESIGN GOALS
+
+* Mobile-first, fast and intuitive
+* Clean SaaS + marketplace hybrid UI
+* Designed for logistics, transportation and supply chain
+* Minimal clicks, maximum automation
+* Strong notification-driven experience (users should not need to search)
+
+---
+
+# 👥 USER ROLES (CRITICAL)
+
+## 1. Super Admin (System Owner)
+
+* Full control panel
+* User management (individual + corporate)
+* Listing control (approve/reject/feature)
+* Revenue & performance analytics
+* Advertisement management
+* System monitoring
+
+## 2. Corporate User (B2B कंपनies)
+
+* Can post loads
+* Can search loads
+* Can receive and manage offers
+* Has web dashboard
+* Can create sub-users (staff accounts)
+* Can access premium listings
+* Can track shipments live
+
+## 3. Individual User (Drivers / Small transporters)
+
+* Mobile app only
+* Can search loads
+* Can post simple listings
+* Can receive real-time job notifications
+* Can accept jobs quickly
+
+---
+
+# 📱 MOBILE APP (INDIVIDUAL USERS)
+
+## Main Screens:
+
+### 1. Home (Dashboard)
+
+* Smart feed (no search needed)
+* Nearby loads (auto-listed)
+* Buttons:
+
+  * "Yük Bul"
+  * "Aracı Çağır"
+* Quick actions
+* Notification-based suggestions
+
+### 2. Load Feed
+
+* Card-based UI
+* Info:
+
+  * Distance
+  * Price
+  * Load type
+  * Vehicle type
+* Filters
+
+### 3. Load Detail
+
+* Fixed price → "Kabul Et"
+* Bidding → "Teklif Ver"
+* Map preview
+* Load details
+
+### 4. Real-Time Matching (Uber-style)
+
+* Map with nearby vehicles
+* "En Yakın Aracı Çağır"
+* ETA + estimated price
+
+### 5. Tracking Screen
+
+* Live map tracking
+* Driver info
+* Status updates
+
+### 6. Notifications
+
+* Smart alerts:
+
+  * Nearby loads
+  * Matching jobs
+  * Offer updates
+
+---
+
+# 💻 WEB DASHBOARD (CORPORATE USERS)
+
+## Main Sections:
+
+### 1. Dashboard
+
+* Active listings
+* Incoming offers
+* Active shipments
+* KPIs (earnings, success rate)
+
+### 2. Create Listing (Advanced Form)
+
+* Load type
+* Weight
+* Pickup & delivery
+* Vehicle type
+* Pricing model:
+
+  * Fixed price
+  * Offer-based
+
+### 3. Offer Management
+
+* Incoming bids
+* Compare offers
+* Accept / Reject
+
+### 4. Shipment Tracking
+
+* Map view
+* Timeline status
+
+### 5. Team Management
+
+* Add sub-users
+* Role-based permissions
+
+### 6. Messaging System
+
+* Chat with drivers / companies
+
+---
+
+# 🛠 ADMIN PANEL (SUPER ADMIN)
+
+## Features:
+
+* User management (ban, approve, roles)
+* Listing moderation
+* Revenue analytics dashboard
+* Platform statistics
+* Advertisement placement UI
+* System logs
+
+---
+
+# 🚚 CORE PLATFORM FEATURES (IMPORTANT UI)
+
+## 1. Marketplace System
+
+* Load posting
+* Bidding system
+
+## 2. Real-Time Matching
+
+* Location-based vehicle dispatch
+* Instant job assignment
+
+## 3. Vehicle Tracking Integration
+
+* "Canlı Takip" button
+* Temporary guest tracking access
+
+## 4. Pricing System
+
+* Fixed price OR bidding
+* Dynamic UI selection
+
+## 5. Role-Based Content Visibility
+
+* Premium listings
+* Device-enabled features
+* Personalized feed
+
+---
+
+# 🔔 NOTIFICATION SYSTEM (VERY IMPORTANT)
+
+* Push-based UX
+* Smart suggestions based on:
+
+  * Location
+  * Vehicle type
+  * Activity history
+
+---
+
+# 🎨 UI COMPONENTS
+
+* Load cards
+* Offer cards
+* Map UI
+* Notification dropdowns
+* Chat UI
+* Role badges
+* Tracking panels
+* Pricing selector (fixed vs bid)
+
+---
+
+# 🧭 NAVIGATION
+
+## Mobile:
+
+* Ana Sayfa
+* Yükler
+* Takip
+* Bildirimler
+* Profil
+
+## Web:
+
+* Dashboard
+* İlanlar
+* Teklifler
+* Takip
+* Raporlar
+* Ayarlar
+
+## Admin:
+
+* Kullanıcılar
+* İlanlar
+* Raporlar
+* Reklamlar
+* Sistem
+
+---
+
+# 🎨 DESIGN STYLE
+
+* Inspired by:
+
+  * Uber Freight
+  * Getir
+  * Modern SaaS dashboards
+* Rounded cards
+* Soft shadows
+* Clean spacing
+* Map-focused UI
+* Icon-heavy interface
+
+---
+
+# 📦 OUTPUT EXPECTATION
+
+* Mobile app UI screens (iOS & Android)
+* Web dashboard UI
+* Admin panel UI
+* UI Kit (components, buttons, forms)
+* Production-ready modern SaaS design
+
+Focus on clarity, speed, and real-world usability for logistics operations.

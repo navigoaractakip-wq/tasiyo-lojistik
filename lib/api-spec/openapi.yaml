@@ -1,22 +1,36 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Lojistik Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: users
+    description: User management
+  - name: loads
+    description: Load/cargo listings
+  - name: offers
+    description: Bidding and offers
+  - name: shipments
+    description: Active shipments
+  - name: vehicles
+    description: Vehicle tracking
+  - name: notifications
+    description: Notifications
+  - name: admin
+    description: Admin panel
+  - name: messages
+    description: Messaging
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +38,418 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [admin, corporate, individual, driver]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, suspended, pending]
+        - name: page
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /loads:
+    get:
+      operationId: listLoads
+      tags: [loads]
+      summary: List load listings
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, pending, assigned, completed, cancelled]
+        - name: vehicleType
+          in: query
+          schema:
+            type: string
+        - name: loadType
+          in: query
+          schema:
+            type: string
+        - name: origin
+          in: query
+          schema:
+            type: string
+        - name: destination
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of loads
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoadListResponse"
+    post:
+      operationId: createLoad
+      tags: [loads]
+      summary: Create load listing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLoadRequest"
+      responses:
+        "201":
+          description: Created load
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Load"
+
+  /loads/{id}:
+    get:
+      operationId: getLoad
+      tags: [loads]
+      summary: Get load details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Load
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Load"
+    patch:
+      operationId: updateLoad
+      tags: [loads]
+      summary: Update load
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLoadRequest"
+      responses:
+        "200":
+          description: Updated load
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Load"
+
+  /offers:
+    get:
+      operationId: listOffers
+      tags: [offers]
+      summary: List offers
+      parameters:
+        - name: loadId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, accepted, rejected, withdrawn]
+      responses:
+        "200":
+          description: List of offers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfferListResponse"
+    post:
+      operationId: createOffer
+      tags: [offers]
+      summary: Submit offer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOfferRequest"
+      responses:
+        "201":
+          description: Created offer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+
+  /offers/{id}/accept:
+    post:
+      operationId: acceptOffer
+      tags: [offers]
+      summary: Accept offer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Offer accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+
+  /offers/{id}/reject:
+    post:
+      operationId: rejectOffer
+      tags: [offers]
+      summary: Reject offer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Offer rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+
+  /shipments:
+    get:
+      operationId: listShipments
+      tags: [shipments]
+      summary: List shipments
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pickup, in_transit, delivered, cancelled]
+        - name: page
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of shipments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShipmentListResponse"
+
+  /shipments/{id}:
+    get:
+      operationId: getShipment
+      tags: [shipments]
+      summary: Get shipment details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Shipment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+
+  /vehicles:
+    get:
+      operationId: listVehicles
+      tags: [vehicles]
+      summary: List nearby vehicles
+      parameters:
+        - name: lat
+          in: query
+          schema:
+            type: number
+        - name: lng
+          in: query
+          schema:
+            type: number
+        - name: radius
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: List of vehicles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VehicleListResponse"
+
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications
+      parameters:
+        - name: unreadOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationListResponse"
+
+  /notifications/{id}/read:
+    post:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Notification marked read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get platform statistics
+      responses:
+        "200":
+          description: Platform stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /messages:
+    get:
+      operationId: listMessages
+      tags: [messages]
+      summary: List conversations
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationListResponse"
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      summary: Send message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +460,562 @@ components:
       required:
         - status
 
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [admin, corporate, individual, driver]
+        status:
+          type: string
+          enum: [active, suspended, pending]
+        company:
+          type: string
+        avatarUrl:
+          type: string
+        rating:
+          type: number
+        totalShipments:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - email
+        - role
+        - status
+        - createdAt
+
+    UserListResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+      required:
+        - users
+        - total
+        - page
+        - pageSize
+
+    CreateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [corporate, individual, driver]
+        company:
+          type: string
+        password:
+          type: string
+      required:
+        - name
+        - email
+        - role
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        status:
+          type: string
+          enum: [active, suspended, pending]
+        company:
+          type: string
+
+    Load:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        origin:
+          type: string
+        destination:
+          type: string
+        distance:
+          type: number
+        weight:
+          type: number
+        loadType:
+          type: string
+        vehicleType:
+          type: string
+        pricingModel:
+          type: string
+          enum: [fixed, bidding]
+        price:
+          type: number
+        minBid:
+          type: number
+        maxBid:
+          type: number
+        status:
+          type: string
+          enum: [active, pending, assigned, completed, cancelled]
+        isPremium:
+          type: boolean
+        postedBy:
+          $ref: "#/components/schemas/User"
+        offersCount:
+          type: integer
+        pickupDate:
+          type: string
+          format: date-time
+        deliveryDate:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        originLat:
+          type: number
+        originLng:
+          type: number
+        destLat:
+          type: number
+        destLng:
+          type: number
+      required:
+        - id
+        - title
+        - origin
+        - destination
+        - loadType
+        - vehicleType
+        - pricingModel
+        - status
+        - createdAt
+
+    LoadListResponse:
+      type: object
+      properties:
+        loads:
+          type: array
+          items:
+            $ref: "#/components/schemas/Load"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+      required:
+        - loads
+        - total
+        - page
+        - pageSize
+
+    CreateLoadRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        origin:
+          type: string
+        destination:
+          type: string
+        weight:
+          type: number
+        loadType:
+          type: string
+        vehicleType:
+          type: string
+        pricingModel:
+          type: string
+          enum: [fixed, bidding]
+        price:
+          type: number
+        minBid:
+          type: number
+        pickupDate:
+          type: string
+          format: date-time
+        deliveryDate:
+          type: string
+          format: date-time
+      required:
+        - title
+        - origin
+        - destination
+        - loadType
+        - vehicleType
+        - pricingModel
+
+    UpdateLoadRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [active, pending, assigned, completed, cancelled]
+        price:
+          type: number
+        isPremium:
+          type: boolean
+
+    Offer:
+      type: object
+      properties:
+        id:
+          type: string
+        loadId:
+          type: string
+        load:
+          $ref: "#/components/schemas/Load"
+        driver:
+          $ref: "#/components/schemas/User"
+        amount:
+          type: number
+        note:
+          type: string
+        status:
+          type: string
+          enum: [pending, accepted, rejected, withdrawn]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - loadId
+        - amount
+        - status
+        - createdAt
+
+    OfferListResponse:
+      type: object
+      properties:
+        offers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Offer"
+        total:
+          type: integer
+      required:
+        - offers
+        - total
+
+    CreateOfferRequest:
+      type: object
+      properties:
+        loadId:
+          type: string
+        amount:
+          type: number
+        note:
+          type: string
+      required:
+        - loadId
+        - amount
+
+    Shipment:
+      type: object
+      properties:
+        id:
+          type: string
+        loadId:
+          type: string
+        load:
+          $ref: "#/components/schemas/Load"
+        driver:
+          $ref: "#/components/schemas/User"
+        status:
+          type: string
+          enum: [pickup, in_transit, delivered, cancelled]
+        currentLat:
+          type: number
+        currentLng:
+          type: number
+        estimatedArrival:
+          type: string
+          format: date-time
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShipmentEvent"
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - loadId
+        - status
+        - createdAt
+
+    ShipmentEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        event:
+          type: string
+        description:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        lat:
+          type: number
+        lng:
+          type: number
+      required:
+        - id
+        - event
+        - timestamp
+
+    ShipmentListResponse:
+      type: object
+      properties:
+        shipments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Shipment"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+      required:
+        - shipments
+        - total
+        - page
+        - pageSize
+
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: string
+        driverId:
+          type: string
+        driver:
+          $ref: "#/components/schemas/User"
+        vehicleType:
+          type: string
+        plateNumber:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        isAvailable:
+          type: boolean
+        eta:
+          type: integer
+        rating:
+          type: number
+      required:
+        - id
+        - driverId
+        - vehicleType
+        - isAvailable
+
+    VehicleListResponse:
+      type: object
+      properties:
+        vehicles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Vehicle"
+        total:
+          type: integer
+      required:
+        - vehicles
+        - total
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [new_load, offer_received, offer_accepted, offer_rejected, shipment_update, system]
+        title:
+          type: string
+        body:
+          type: string
+        isRead:
+          type: boolean
+        relatedId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - title
+        - body
+        - isRead
+        - createdAt
+
+    NotificationListResponse:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        unreadCount:
+          type: integer
+      required:
+        - notifications
+        - unreadCount
+
+    AdminStats:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        activeUsers:
+          type: integer
+        totalLoads:
+          type: integer
+        activeLoads:
+          type: integer
+        totalShipments:
+          type: integer
+        completedShipments:
+          type: integer
+        totalRevenue:
+          type: number
+        monthlyRevenue:
+          type: number
+        pendingApprovals:
+          type: integer
+        activeVehicles:
+          type: integer
+        revenueChart:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChartDataPoint"
+        shipmentsChart:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChartDataPoint"
+      required:
+        - totalUsers
+        - activeUsers
+        - totalLoads
+        - activeLoads
+        - totalShipments
+        - completedShipments
+        - totalRevenue
+        - monthlyRevenue
+        - pendingApprovals
+        - activeVehicles
+        - revenueChart
+        - shipmentsChart
+
+    ChartDataPoint:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: number
+      required:
+        - label
+        - value
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+        conversationId:
+          type: string
+        senderId:
+          type: string
+        sender:
+          $ref: "#/components/schemas/User"
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - senderId
+        - body
+        - createdAt
+
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+        participants:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        lastMessage:
+          $ref: "#/components/schemas/Message"
+        unreadCount:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - participants
+        - unreadCount
+        - updatedAt
+
+    ConversationListResponse:
+      type: object
+      properties:
+        conversations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Conversation"
+        total:
+          type: integer
+      required:
+        - conversations
+        - total
+
+    SendMessageRequest:
+      type: object
+      properties:
+        conversationId:
+          type: string
+        recipientId:
+          type: string
+        body:
+          type: string
+      required:
+        - body
