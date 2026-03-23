@@ -7,15 +7,29 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
-// Pages
+// Auth
 import Login from "@/pages/Login";
+
+// Admin
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminLoads from "@/pages/admin/AdminLoads";
+import AdminStats from "@/pages/admin/AdminStats";
+import AdminSystem from "@/pages/admin/AdminSystem";
 import AdminSettings from "@/pages/admin/AdminSettings";
+
+// Corporate
 import CorporateDashboard from "@/pages/corporate/CorporateDashboard";
 import CreateLoad from "@/pages/corporate/CreateLoad";
+import CorporateOffers from "@/pages/corporate/CorporateOffers";
+import CorporateTeam from "@/pages/corporate/CorporateTeam";
+import CorporateSettings from "@/pages/corporate/CorporateSettings";
+
+// Driver
 import DriverFeed from "@/pages/driver/DriverFeed";
+import DriverLoads from "@/pages/driver/DriverLoads";
 import DriverMap from "@/pages/driver/DriverMap";
+import DriverTracking from "@/pages/driver/DriverTracking";
 
 const queryClient = new QueryClient();
 
@@ -27,7 +41,6 @@ function ProtectedRoute({
   allowedRoles?: Array<"admin" | "corporate" | "driver">;
 }) {
   const { user, role, isLoading } = useAuth();
-  const [location] = useLocation();
 
   if (isLoading) {
     return (
@@ -42,7 +55,8 @@ function ProtectedRoute({
   }
 
   if (allowedRoles && !allowedRoles.includes(role as any)) {
-    const target = role === "admin" ? "/admin" : role === "corporate" ? "/dashboard" : "/driver";
+    const target =
+      role === "admin" ? "/admin" : role === "corporate" ? "/dashboard" : "/driver";
     return <Redirect to={target} />;
   }
 
@@ -51,7 +65,6 @@ function ProtectedRoute({
 
 function Router() {
   const { user, role, isLoading } = useAuth();
-  const [location] = useLocation();
 
   return (
     <Switch>
@@ -71,7 +84,7 @@ function Router() {
         )}
       </Route>
 
-      {/* Admin Routes */}
+      {/* ── Admin Routes ── */}
       <Route path="/admin">
         <ProtectedRoute allowedRoles={["admin"]}>
           <AppLayout><AdminDashboard /></AppLayout>
@@ -82,13 +95,28 @@ function Router() {
           <AppLayout><AdminUsers /></AppLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/admin/loads">
+        <ProtectedRoute allowedRoles={["admin"]}>
+          <AppLayout><AdminLoads /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/stats">
+        <ProtectedRoute allowedRoles={["admin"]}>
+          <AppLayout><AdminStats /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/system">
+        <ProtectedRoute allowedRoles={["admin"]}>
+          <AppLayout><AdminSystem /></AppLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/admin/settings">
         <ProtectedRoute allowedRoles={["admin"]}>
           <AppLayout><AdminSettings /></AppLayout>
         </ProtectedRoute>
       </Route>
 
-      {/* Corporate Routes */}
+      {/* ── Corporate Routes ── */}
       <Route path="/dashboard">
         <ProtectedRoute allowedRoles={["corporate"]}>
           <AppLayout><CorporateDashboard /></AppLayout>
@@ -99,8 +127,23 @@ function Router() {
           <AppLayout><CreateLoad /></AppLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/dashboard/offers">
+        <ProtectedRoute allowedRoles={["corporate"]}>
+          <AppLayout><CorporateOffers /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/team">
+        <ProtectedRoute allowedRoles={["corporate"]}>
+          <AppLayout><CorporateTeam /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/settings">
+        <ProtectedRoute allowedRoles={["corporate"]}>
+          <AppLayout><CorporateSettings /></AppLayout>
+        </ProtectedRoute>
+      </Route>
 
-      {/* Driver Routes */}
+      {/* ── Driver Routes ── */}
       <Route path="/driver">
         <ProtectedRoute allowedRoles={["driver"]}>
           <AppLayout><DriverFeed /></AppLayout>
@@ -108,7 +151,7 @@ function Router() {
       </Route>
       <Route path="/driver/loads">
         <ProtectedRoute allowedRoles={["driver"]}>
-          <AppLayout><DriverFeed /></AppLayout>
+          <AppLayout><DriverLoads /></AppLayout>
         </ProtectedRoute>
       </Route>
       <Route path="/driver/map">
@@ -116,18 +159,14 @@ function Router() {
           <AppLayout><DriverMap /></AppLayout>
         </ProtectedRoute>
       </Route>
-
-      {/* Placeholder for unbuilt pages within AppLayout */}
-      <Route path="/:rest*">
-        <ProtectedRoute>
-          <AppLayout>
-            <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-              <h2 className="text-2xl font-bold mb-2">Sayfa Yapım Aşamasında</h2>
-              <p className="text-muted-foreground">Bu sayfa henüz tamamlanmadı.</p>
-            </div>
-          </AppLayout>
+      <Route path="/driver/tracking">
+        <ProtectedRoute allowedRoles={["driver"]}>
+          <AppLayout><DriverTracking /></AppLayout>
         </ProtectedRoute>
       </Route>
+
+      {/* 404 */}
+      <Route component={NotFound} />
     </Switch>
   );
 }

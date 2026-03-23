@@ -1,4 +1,4 @@
-import { useAuth, Role } from "@/lib/auth-context";
+import type { Role } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ShieldCheck, Building2, Truck } from "lucide-react";
@@ -6,11 +6,9 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 
 export default function Gateway() {
-  const { setRole } = useAuth();
   const [, setLocation] = useLocation();
 
-  const handleSelectRole = (role: Role, path: string) => {
-    setRole(role);
+  const handleSelectRole = (_role: Role, path: string) => {
     setLocation(path);
   };
 
