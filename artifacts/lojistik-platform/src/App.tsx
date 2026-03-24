@@ -34,6 +34,7 @@ import DriverFeed from "@/pages/driver/DriverFeed";
 import DriverLoads from "@/pages/driver/DriverLoads";
 import DriverMap from "@/pages/driver/DriverMap";
 import DriverTracking from "@/pages/driver/DriverTracking";
+import DriverOffers from "@/pages/driver/DriverOffers";
 
 const queryClient = new QueryClient();
 
@@ -178,6 +179,11 @@ function Router() {
       <Route path="/driver/tracking">
         <ProtectedRoute allowedRoles={["driver"]}>
           <AppLayout><DriverTracking /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/driver/offers">
+        <ProtectedRoute allowedRoles={["driver"]}>
+          <AppLayout><DriverOffers /></AppLayout>
         </ProtectedRoute>
       </Route>
 

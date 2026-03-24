@@ -468,6 +468,8 @@ export const UpdateLoadResponse = zod.object({
 export const ListOffersQueryParams = zod.object({
   loadId: zod.coerce.string().optional(),
   status: zod.enum(["pending", "accepted", "rejected", "withdrawn"]).optional(),
+  mine: zod.string().optional(),
+  byMe: zod.string().optional(),
 });
 
 export const ListOffersResponse = zod.object({

@@ -5,12 +5,15 @@ import {
   LayoutDashboard, Package, Truck, Users, 
   MessageSquare, Settings, Bell, LogOut, 
   Menu, X, ShieldAlert, BarChart3, Map,
-  Search
+  Search, FileText
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -39,9 +42,24 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <Bell className="h-5 w-5 text-gray-600" />
                 <span className="absolute top-1 right-1 h-2 w-2 bg-accent rounded-full border-2 border-white"></span>
               </Button>
-              <Avatar className="h-8 w-8 border border-border">
-                <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">SF</AvatarFallback>
-              </Avatar>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Avatar className="h-8 w-8 border border-border cursor-pointer">
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                      {user?.name ? user.name.slice(0, 2).toUpperCase() : "SF"}
+                    </AvatarFallback>
+                  </Avatar>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <div className="px-3 py-2 border-b">
+                    <p className="text-xs font-semibold truncate">{user?.name ?? "Şoför"}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{user?.phone ?? user?.email ?? ""}</p>
+                  </div>
+                  <DropdownMenuItem onClick={logout} className="text-red-600 gap-2 cursor-pointer">
+                    <LogOut className="w-4 h-4" /> Çıkış Yap
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </header>
           
@@ -57,8 +75,8 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <Map className="h-6 w-6" />
               </Link>
             </div>
+            <DriverNavItem href="/driver/offers" icon={FileText} label="Tekliflerim" active={location === "/driver/offers"} />
             <DriverNavItem href="/driver/tracking" icon={Truck} label="Takip" active={location === "/driver/tracking"} />
-            <DriverNavItem onClick={logout} icon={LogOut} label="Çıkış" />
           </nav>
         </div>
       </div>

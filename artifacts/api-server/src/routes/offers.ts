@@ -51,7 +51,7 @@ function mapOffer(offer: typeof offersTable.$inferSelect, driver?: typeof usersT
 
 // GET /offers — supports ?mine=true (returns offers on the authenticated user's loads)
 router.get("/offers", optionalAuth, async (req: AuthRequest, res): Promise<void> => {
-  const { loadId, status, mine } = req.query;
+  const { loadId, status, mine, byMe } = req.query;
 
   const allOffers = await db.select().from(offersTable).orderBy(offersTable.createdAt);
   const allUsers = await db.select().from(usersTable);
@@ -68,6 +68,11 @@ router.get("/offers", optionalAuth, async (req: AuthRequest, res): Promise<void>
   if (mine === "true" && req.userId) {
     const myLoadIds = new Set(allLoads.filter((l) => l.postedById === req.userId).map((l) => l.id));
     filtered = filtered.filter((o) => myLoadIds.has(o.loadId));
+  }
+
+  // ?byMe=true → for driver: only offers the authenticated user submitted
+  if (byMe === "true" && req.userId) {
+    filtered = filtered.filter((o) => o.driverId === req.userId);
   }
 
   const mapped = filtered.map((o) => mapOffer(o, userMap.get(o.driverId), loadMap.get(o.loadId)));
