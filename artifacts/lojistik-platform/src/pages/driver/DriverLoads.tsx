@@ -1,69 +1,35 @@
 import { useState } from "react";
-import { useListLoads } from "@workspace/api-client-react";
+import { useListLoads, useCreateOffer } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import {
   Search, MapPin, Weight, Truck, Clock, ChevronRight,
-  SlidersHorizontal, Zap, Package, Star, CheckCircle2,
+  SlidersHorizontal, Zap, Package, Star, CheckCircle2, Loader2,
 } from "lucide-react";
 
-const MOCK_LOADS = [
-  {
-    id:"1", title:"İstanbul - Ankara Parsiyel Yük",    origin:"İstanbul, Tuzla",      destination:"Ankara, Ostim",
-    weight:4.5,  loadType:"Parsiyel",    vehicleType:"TIR",          pricingModel:"fixed",   price:15000, status:"active", isPremium:true,
-    distance:450, duration:"5-6 saat",  urgency:"normal", postedAgo:"30 dk",
-  },
-  {
-    id:"2", title:"İzmir - Bursa Konteyner",           origin:"İzmir, Aliağa Liman",  destination:"Bursa, Gemlik",
-    weight:24,   loadType:"Konteyner",   vehicleType:"Açık Kasa",    pricingModel:"bidding",  price:null,  status:"active", isPremium:false,
-    distance:290, duration:"3-4 saat",  urgency:"urgent", postedAgo:"2 saat",
-  },
-  {
-    id:"3", title:"Kocaeli - Antalya Tekstil",         origin:"Kocaeli, Gebze OSB",   destination:"Antalya, DOSAB",
-    weight:12,   loadType:"Genel Kargo", vehicleType:"Kapalı Kasa",  pricingModel:"fixed",   price:18500, status:"active", isPremium:true,
-    distance:680, duration:"7-8 saat",  urgency:"normal", postedAgo:"1 saat",
-  },
-  {
-    id:"4", title:"Gaziantep - Mersin Tekstil İhracat", origin:"Gaziantep Organize",  destination:"Mersin Liman",
-    weight:20,   loadType:"Dökme",       vehicleType:"Tenteli TIR",  pricingModel:"bidding",  price:null,  status:"active", isPremium:false,
-    distance:220, duration:"2.5 saat",  urgency:"urgent", postedAgo:"45 dk",
-  },
-  {
-    id:"5", title:"Adana - Konya Soğuk Zincir",        origin:"Adana, Yüreğir",       destination:"Konya Merkez",
-    weight:6,    loadType:"Soğuk Zincir",vehicleType:"Frigorifik",   pricingModel:"fixed",   price:12000, status:"active", isPremium:false,
-    distance:310, duration:"3.5 saat",  urgency:"normal", postedAgo:"3 saat",
-  },
-  {
-    id:"6", title:"Bursa - İstanbul Otomotiv Parça",   origin:"Bursa, Nilüfer OSB",   destination:"İstanbul, Tuzla",
-    weight:8,    loadType:"Ağır Yük",    vehicleType:"Lowbed",       pricingModel:"fixed",   price:28000, status:"active", isPremium:true,
-    distance:160, duration:"2 saat",    urgency:"normal", postedAgo:"5 dk",
-  },
-  {
-    id:"7", title:"Samsun - İzmir Tahıl",              origin:"Samsun Liman",          destination:"İzmir Alsancak",
-    weight:40,   loadType:"Dökme",       vehicleType:"TIR",          pricingModel:"fixed",   price:18000, status:"active", isPremium:true,
-    distance:840, duration:"9 saat",    urgency:"normal", postedAgo:"2 saat",
-  },
-  {
-    id:"8", title:"Eskişehir - Kayseri Makine",        origin:"Eskişehir OSB",         destination:"Kayseri OSB",
-    weight:15,   loadType:"Proje Kargo", vehicleType:"Lowbed",       pricingModel:"bidding",  price:null,  status:"active", isPremium:false,
-    distance:380, duration:"4 saat",    urgency:"normal", postedAgo:"6 saat",
-  },
-];
-
-type Load = typeof MOCK_LOADS[0];
+type Load = {
+  id: string;
+  title: string;
+  origin: string;
+  destination: string;
+  weight?: number | null;
+  distance?: number | null;
+  loadType: string;
+  vehicleType: string;
+  pricingModel: string;
+  price?: number | null;
+  status: string;
+  isPremium?: boolean;
+  createdAt: string | Date;
+};
 
 const VEHICLE_TYPES = ["Tümü", "TIR", "Kapalı Kasa", "Açık Kasa", "Frigorifik", "Lowbed", "Tenteli TIR"];
 
@@ -72,18 +38,31 @@ function OfferDialog({ load, onClose }: { load: Load; onClose: () => void }) {
   const [price, setPrice] = useState(load.price ? String(load.price) : "");
   const [note, setNote] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const { mutate: createOffer, isPending } = useCreateOffer({
+    mutation: {
+      onSuccess: () => setSubmitted(true),
+      onError: (err: any) => {
+        const msg = err?.data?.message ?? err?.message ?? "Teklif gönderilemedi.";
+        if (msg.includes("bekleyen")) {
+          toast({ title: "Tekrar teklif verilemez", description: "Bu ilana zaten bekleyen bir teklifiniz var.", variant: "destructive" });
+        } else if (err?.status === 401) {
+          toast({ title: "Giriş Gerekli", description: "Teklif vermek için lütfen giriş yapın.", variant: "destructive" });
+        } else {
+          toast({ title: "Hata", description: msg, variant: "destructive" });
+        }
+      },
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!price || isNaN(Number(price)) || Number(price) <= 0) {
+    const amount = Number(price);
+    if (!price || isNaN(amount) || amount <= 0) {
       toast({ title: "Hata", description: "Geçerli bir fiyat giriniz.", variant: "destructive" });
       return;
     }
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-    setLoading(false);
-    setSubmitted(true);
+    createOffer({ data: { loadId: load.id, amount, note: note.trim() || undefined } });
   };
 
   if (submitted) {
@@ -95,7 +74,7 @@ function OfferDialog({ load, onClose }: { load: Load; onClose: () => void }) {
           </div>
           <h3 className="text-lg font-bold text-gray-900 mb-1">Teklifiniz Alındı!</h3>
           <p className="text-sm text-gray-500 mb-4">
-            <strong>{Number(price).toLocaleString("tr-TR")} ₺</strong> teklifiniz iletildi.<br />
+            <strong>{Number(price).toLocaleString("tr-TR")} ₺</strong> teklifiniz sisteme kaydedildi.<br />
             Firma en kısa sürede sizinle iletişime geçecek.
           </p>
           <Button className="w-full" onClick={onClose}>Kapat</Button>
@@ -108,24 +87,20 @@ function OfferDialog({ load, onClose }: { load: Load; onClose: () => void }) {
     <DialogContent className="max-w-sm">
       <DialogHeader>
         <DialogTitle>Teklif Ver</DialogTitle>
-        <DialogDescription className="text-xs leading-relaxed">
-          {load.title}
-        </DialogDescription>
+        <DialogDescription className="text-xs leading-relaxed">{load.title}</DialogDescription>
       </DialogHeader>
 
       <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 text-sm mb-1">
         <div className="flex items-center gap-2 text-gray-600">
-          <MapPin className="w-3.5 h-3.5 text-green-500 shrink-0" />
-          <span>{load.origin}</span>
+          <MapPin className="w-3.5 h-3.5 text-green-500 shrink-0" /><span>{load.origin}</span>
         </div>
         <div className="flex items-center gap-2 text-gray-600">
-          <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0" />
-          <span>{load.destination}</span>
+          <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0" /><span>{load.destination}</span>
         </div>
         <div className="flex gap-4 text-xs text-gray-500 pt-1 border-t border-gray-100">
-          <span>{load.weight} ton</span>
+          {load.weight != null && <span><Weight className="w-3 h-3 inline mr-0.5" />{load.weight} ton</span>}
           <span>{load.vehicleType}</span>
-          <span>{load.distance} km</span>
+          {load.distance != null && <span>{load.distance} km</span>}
         </div>
       </div>
 
@@ -146,11 +121,10 @@ function OfferDialog({ load, onClose }: { load: Load; onClose: () => void }) {
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-400">₺</span>
           </div>
-          {load.price && (
-            <p className="text-xs text-muted-foreground mt-1">
-              İlan fiyatı: <span className="font-semibold text-green-600">{load.price.toLocaleString("tr-TR")} ₺</span>
-            </p>
-          )}
+          {load.price
+            ? <p className="text-xs text-muted-foreground mt-1">İlan fiyatı: <span className="font-semibold text-green-600">{load.price.toLocaleString("tr-TR")} ₺</span></p>
+            : <p className="text-xs text-muted-foreground mt-1">Açık teklif ilanı — fiyatınızı belirleyin</p>
+          }
         </div>
 
         <div>
@@ -164,11 +138,11 @@ function OfferDialog({ load, onClose }: { load: Load; onClose: () => void }) {
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button type="button" variant="outline" onClick={onClose} disabled={loading} className="flex-1">
+          <Button type="button" variant="outline" onClick={onClose} disabled={isPending} className="flex-1">
             Vazgeç
           </Button>
-          <Button type="submit" disabled={loading} className="flex-1">
-            {loading ? "Gönderiliyor..." : "Teklif Gönder"}
+          <Button type="submit" disabled={isPending} className="flex-1">
+            {isPending ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" />Gönderiliyor…</> : "Teklif Gönder"}
           </Button>
         </DialogFooter>
       </form>
@@ -181,9 +155,10 @@ export default function DriverLoads() {
   const [vehicleFilter, setVehicleFilter] = useState("Tümü");
   const [showFilters, setShowFilters] = useState(false);
   const [offerLoad, setOfferLoad] = useState<Load | null>(null);
-  const { data } = useListLoads({ status: "active" });
 
-  const allLoads = (data?.loads?.length ? data.loads : MOCK_LOADS) as typeof MOCK_LOADS;
+  const { data, isLoading } = useListLoads({ status: "active" });
+
+  const allLoads: Load[] = (data?.loads ?? []) as Load[];
   const filtered = allLoads.filter(l => {
     const q = search.toLowerCase();
     const matchSearch = !q || l.title.toLowerCase().includes(q) || l.origin.toLowerCase().includes(q) || l.destination.toLowerCase().includes(q);
@@ -196,7 +171,9 @@ export default function DriverLoads() {
       {/* Header */}
       <div className="bg-primary px-4 pt-4 pb-6 rounded-b-3xl shadow-md">
         <h1 className="text-xl font-bold text-white mb-1">Yük İlanları</h1>
-        <p className="text-blue-200 text-sm mb-4">{filtered.length} uygun ilan bulundu</p>
+        <p className="text-blue-200 text-sm mb-4">
+          {isLoading ? "Yükleniyor…" : `${filtered.length} ilan`}
+        </p>
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -222,7 +199,7 @@ export default function DriverLoads() {
       {showFilters && (
         <div className="px-4 pt-3 pb-1">
           <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Araç Tipi</p>
-          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+          <div className="flex gap-2 overflow-x-auto pb-2">
             {VEHICLE_TYPES.map(v => (
               <button
                 key={v}
@@ -240,19 +217,24 @@ export default function DriverLoads() {
 
       {/* Loads List */}
       <div className="px-4 mt-3 space-y-3">
-        {filtered.map(load => (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" /> Yükler getiriliyor…
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12">
+            <Package className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-40" />
+            <p className="font-medium text-muted-foreground">
+              {search ? "Arama kriterlerine uygun ilan bulunamadı" : "Şu an aktif ilan yok"}
+            </p>
+          </div>
+        ) : filtered.map(load => (
           <Card key={load.id} className="shadow-sm border-0 overflow-hidden">
             <CardContent className="p-0">
               {load.isPremium && (
                 <div className="bg-gradient-to-r from-yellow-400 to-orange-400 px-3 py-1 flex items-center gap-1">
                   <Star className="w-3 h-3 text-white fill-white" />
                   <span className="text-[11px] text-white font-semibold">Premium İlan</span>
-                </div>
-              )}
-              {(load as any).urgency === "urgent" && !load.isPremium && (
-                <div className="bg-gradient-to-r from-red-500 to-red-600 px-3 py-1 flex items-center gap-1">
-                  <Zap className="w-3 h-3 text-white" />
-                  <span className="text-[11px] text-white font-semibold">Acil İlan</span>
                 </div>
               )}
               <div className="p-4">
@@ -274,9 +256,13 @@ export default function DriverLoads() {
                 </div>
 
                 <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
-                  <div className="flex items-center gap-1"><Weight className="w-3.5 h-3.5" />{load.weight} ton</div>
+                  {load.weight != null && (
+                    <div className="flex items-center gap-1"><Weight className="w-3.5 h-3.5" />{load.weight} ton</div>
+                  )}
                   <div className="flex items-center gap-1"><Truck className="w-3.5 h-3.5" />{load.vehicleType}</div>
-                  <div className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{load.distance} km</div>
+                  {load.distance != null && (
+                    <div className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{load.distance} km</div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -287,7 +273,8 @@ export default function DriverLoads() {
                       <span className="text-green-600 font-bold text-base">{load.price?.toLocaleString("tr-TR")} ₺</span>
                     )}
                     <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                      <Clock className="w-3 h-3" />{(load as any).postedAgo}
+                      <Clock className="w-3 h-3" />
+                      {new Date(load.createdAt).toLocaleDateString("tr-TR")}
                     </span>
                   </div>
                   <Button
@@ -302,17 +289,8 @@ export default function DriverLoads() {
             </CardContent>
           </Card>
         ))}
-
-        {filtered.length === 0 && (
-          <div className="text-center py-12">
-            <Package className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-40" />
-            <p className="font-medium text-muted-foreground">Sonuç bulunamadı</p>
-            <p className="text-sm text-muted-foreground mt-1">Farklı bir arama deneyin</p>
-          </div>
-        )}
       </div>
 
-      {/* Offer Dialog */}
       <Dialog open={!!offerLoad} onOpenChange={open => !open && setOfferLoad(null)}>
         {offerLoad && <OfferDialog load={offerLoad} onClose={() => setOfferLoad(null)} />}
       </Dialog>

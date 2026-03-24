@@ -472,6 +472,7 @@ export const ListLoadsStatus = {
 export type ListOffersParams = {
   loadId?: string;
   status?: ListOffersStatus;
+  mine?: "true" | "false";
 };
 
 export type ListOffersStatus =
