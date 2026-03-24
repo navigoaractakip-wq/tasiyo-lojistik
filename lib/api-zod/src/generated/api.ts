@@ -407,6 +407,16 @@ export const UpdateLoadBody = zod.object({
   status: zod
     .enum(["active", "pending", "assigned", "completed", "cancelled"])
     .optional(),
+  title: zod.string().optional(),
+  description: zod.string().optional(),
+  origin: zod.string().optional(),
+  destination: zod.string().optional(),
+  weight: zod.number().optional(),
+  loadType: zod.string().optional(),
+  vehicleType: zod.string().optional(),
+  pricingModel: zod.enum(["fixed", "bidding"]).optional(),
+  pickupDate: zod.string().optional(),
+  deliveryDate: zod.string().optional(),
   price: zod.number().optional(),
   isPremium: zod.boolean().optional(),
 });

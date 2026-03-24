@@ -1,10 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Truck, ArrowRight, Calendar, Weight, Info } from "lucide-react";
+import { MapPin, Truck, ArrowRight, Calendar, Weight, Info, Pencil } from "lucide-react";
 import type { Load } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { Link } from "wouter";
 
 interface LoadCardProps {
   load: Load;
@@ -126,9 +127,18 @@ export function LoadCard({ load, viewMode = "corporate", onAction }: LoadCardPro
           </div>
           
           {viewMode === "corporate" && (
-            <Button variant="outline" className="rounded-xl border-primary text-primary hover:bg-primary/5">
-              Detaylar ({load.offersCount || 0} Teklif)
-            </Button>
+            <div className="flex items-center gap-2">
+              {(load.offersCount ?? 0) === 0 && (
+                <Link href={`/dashboard/edit-load/${load.id}`}>
+                  <Button variant="ghost" size="sm" className="rounded-xl text-muted-foreground hover:text-primary gap-1.5 h-9 px-3">
+                    <Pencil className="w-3.5 h-3.5" /> Düzenle
+                  </Button>
+                </Link>
+              )}
+              <Button variant="outline" className="rounded-xl border-primary text-primary hover:bg-primary/5">
+                Detaylar ({load.offersCount || 0} Teklif)
+              </Button>
+            </div>
           )}
           
           {viewMode === "driver" && (

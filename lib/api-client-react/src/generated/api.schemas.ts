@@ -169,6 +169,16 @@ export const UpdateLoadRequestStatus = {
 
 export interface UpdateLoadRequest {
   status?: UpdateLoadRequestStatus;
+  title?: string;
+  description?: string;
+  origin?: string;
+  destination?: string;
+  weight?: number;
+  loadType?: string;
+  vehicleType?: string;
+  pricingModel?: "fixed" | "bidding";
+  pickupDate?: string;
+  deliveryDate?: string;
   price?: number;
   isPremium?: boolean;
 }

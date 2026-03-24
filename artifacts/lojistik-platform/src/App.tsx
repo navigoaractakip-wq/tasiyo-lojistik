@@ -23,6 +23,7 @@ import AdminSettings from "@/pages/admin/AdminSettings";
 // Corporate
 import CorporateDashboard from "@/pages/corporate/CorporateDashboard";
 import CreateLoad from "@/pages/corporate/CreateLoad";
+import EditLoad from "@/pages/corporate/EditLoad";
 import CorporateOffers from "@/pages/corporate/CorporateOffers";
 import CorporateTracking from "@/pages/corporate/CorporateTracking";
 import CorporateTeam from "@/pages/corporate/CorporateTeam";
@@ -130,6 +131,11 @@ function Router() {
       <Route path="/dashboard/create-load">
         <ProtectedRoute allowedRoles={["corporate"]}>
           <AppLayout><CreateLoad /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/edit-load/:id">
+        <ProtectedRoute allowedRoles={["corporate"]}>
+          <AppLayout><EditLoad /></AppLayout>
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/offers">
