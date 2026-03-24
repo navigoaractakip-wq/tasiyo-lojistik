@@ -137,7 +137,7 @@ export default function CreateLoad() {
               {/* Yükleme Noktaları */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <FormLabel className="text-sm font-semibold">Yükleme Noktaları</FormLabel>
+                  <label className="text-sm font-semibold">Yükleme Noktaları</label>
                   <Button
                     type="button"
                     variant="outline"
@@ -184,7 +184,7 @@ export default function CreateLoad() {
               {/* Teslim Noktaları */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <FormLabel className="text-sm font-semibold">Teslim Noktaları</FormLabel>
+                  <label className="text-sm font-semibold">Teslim Noktaları</label>
                   <Button
                     type="button"
                     variant="outline"
