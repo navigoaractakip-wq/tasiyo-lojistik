@@ -23,6 +23,7 @@ import AdminSettings from "@/pages/admin/AdminSettings";
 import CorporateDashboard from "@/pages/corporate/CorporateDashboard";
 import CreateLoad from "@/pages/corporate/CreateLoad";
 import CorporateOffers from "@/pages/corporate/CorporateOffers";
+import CorporateTracking from "@/pages/corporate/CorporateTracking";
 import CorporateTeam from "@/pages/corporate/CorporateTeam";
 import CorporateSettings from "@/pages/corporate/CorporateSettings";
 
@@ -132,6 +133,11 @@ function Router() {
       <Route path="/dashboard/offers">
         <ProtectedRoute allowedRoles={["corporate"]}>
           <AppLayout><CorporateOffers /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/tracking">
+        <ProtectedRoute allowedRoles={["corporate"]}>
+          <AppLayout><CorporateTracking /></AppLayout>
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/team">

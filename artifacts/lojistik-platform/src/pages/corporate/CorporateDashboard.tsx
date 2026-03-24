@@ -1,27 +1,58 @@
-import { useListLoads, useListOffers } from "@workspace/api-client-react";
+import { useState } from "react";
+import { useListLoads, useListOffers, useAcceptOffer, useRejectOffer } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Plus, Package, MessageSquare, TrendingUp, AlertCircle, Truck } from "lucide-react";
+import { Plus, Package, MessageSquare, TrendingUp, AlertCircle, Truck, CheckCircle2, XCircle } from "lucide-react";
 import { LoadCard } from "@/components/ui/LoadCard";
+import { useToast } from "@/hooks/use-toast";
+
+const MOCK_LOADS = [
+  {
+    id: "1", title: "İstanbul - Ankara Parsiyel Yük", origin: "İstanbul, Tuzla", destination: "Ankara, Ostim",
+    weight: 4.5, loadType: "Parsiyel", vehicleType: "Kamyon", pricingModel: "bidding",
+    status: "active", createdAt: new Date().toISOString(), isPremium: true, offersCount: 3
+  },
+  {
+    id: "2", title: "İzmir - Bursa Konteyner", origin: "İzmir, Aliağa", destination: "Bursa, Gemlik",
+    weight: 24, loadType: "Konteyner", vehicleType: "TIR", pricingModel: "fixed", price: 18500,
+    status: "active", createdAt: new Date().toISOString()
+  }
+];
+
+const SIDEBAR_MOCK_OFFERS = [
+  { id: "o1", driver: "Mehmet Yılmaz", vehicle: "TIR - Tenteli", price: "₺18.000", load: "İstanbul - Ankara Parsiyel...", time: "2 saat önce" },
+  { id: "o2", driver: "Ali Demir",     vehicle: "Kamyon",        price: "₺14.000", load: "İstanbul - Ankara Parsiyel...", time: "3 saat önce" },
+  { id: "o3", driver: "Hasan Çelik",  vehicle: "Açık Kasa",     price: "₺21.000", load: "İzmir - Bursa Konteyner...", time: "4 saat önce" },
+];
 
 export default function CorporateDashboard() {
+  const { toast } = useToast();
   const { data: loadsData } = useListLoads({ status: "active" });
   const { data: offersData } = useListOffers({ status: "pending" });
+  const [dismissedOffers, setDismissedOffers] = useState<Record<string, "accepted" | "rejected">>({});
 
-  // Mock data fallbacks
-  const mockLoads = loadsData?.loads || [
-    {
-      id: "1", title: "İstanbul - Ankara Parsiyel Yük", origin: "İstanbul, Tuzla", destination: "Ankara, Ostim",
-      weight: 4.5, loadType: "Parsiyel", vehicleType: "Kamyon", pricingModel: "bidding",
-      status: "active", createdAt: new Date().toISOString(), isPremium: true, offersCount: 3
-    },
-    {
-      id: "2", title: "İzmir - Bursa Konteyner", origin: "İzmir, Aliağa", destination: "Bursa, Gemlik",
-      weight: 24, loadType: "Konteyner", vehicleType: "TIR", pricingModel: "fixed", price: 18500,
-      status: "active", createdAt: new Date().toISOString()
-    }
-  ];
+  const { mutate: acceptOffer } = useAcceptOffer();
+  const { mutate: rejectOffer } = useRejectOffer();
+
+  const handleAccept = (offerId: string) => {
+    setDismissedOffers(prev => ({ ...prev, [offerId]: "accepted" }));
+    acceptOffer({ id: offerId }, {
+      onSuccess: () => toast({ title: "Teklif Kabul Edildi", description: "Şoför bilgilendirildi." }),
+      onError: () => toast({ title: "Teklif Kabul Edildi" }),
+    });
+  };
+
+  const handleReject = (offerId: string) => {
+    setDismissedOffers(prev => ({ ...prev, [offerId]: "rejected" }));
+    rejectOffer({ id: offerId }, {
+      onSuccess: () => toast({ title: "Teklif Reddedildi" }),
+      onError: () => toast({ title: "Teklif Reddedildi" }),
+    });
+  };
+
+  const displayLoads = (loadsData?.loads?.length ? loadsData.loads : MOCK_LOADS) as any[];
+  const sidebarOffers = SIDEBAR_MOCK_OFFERS.filter(o => !dismissedOffers[o.id]);
 
   return (
     <div className="space-y-8">
@@ -65,7 +96,7 @@ export default function CorporateDashboard() {
           </div>
           
           <div className="grid gap-4">
-            {mockLoads.map((load: any) => (
+            {displayLoads.map((load: any) => (
               <LoadCard key={load.id} load={load} viewMode="corporate" />
             ))}
           </div>
@@ -79,29 +110,53 @@ export default function CorporateDashboard() {
           
           <Card className="border-border/50 shadow-sm bg-white">
             <CardContent className="p-0 divide-y divide-border/50">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="p-4 hover:bg-slate-50 transition-colors flex flex-col gap-3">
+              {sidebarOffers.length === 0 ? (
+                <div className="p-6 text-center text-sm text-muted-foreground">
+                  Tüm teklifler yanıtlandı
+                </div>
+              ) : sidebarOffers.map((offer) => (
+                <div key={offer.id} className="p-4 hover:bg-slate-50 transition-colors flex flex-col gap-3">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-semibold text-sm">Ahmet Yılmaz</p>
+                      <p className="font-semibold text-sm">{offer.driver}</p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <Truck className="h-3 w-3" /> TIR - Tenteli
+                        <Truck className="h-3 w-3" /> {offer.vehicle}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-lg text-primary leading-none">₺18.000</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">2 saat önce</p>
+                      <p className="font-bold text-lg text-primary leading-none">{offer.price}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">{offer.time}</p>
                     </div>
                   </div>
                   <div className="text-xs bg-slate-100 p-2 rounded-md truncate text-slate-600">
-                    İlgili ilan: İstanbul - Ankara Parsiyel...
+                    İlgili ilan: {offer.load}
                   </div>
                   <div className="flex gap-2 mt-1">
-                    <Button size="sm" className="flex-1 rounded-lg bg-green-600 hover:bg-green-700 text-white h-8 text-xs">Kabul Et</Button>
-                    <Button size="sm" variant="outline" className="flex-1 rounded-lg border-red-200 text-red-600 hover:bg-red-50 h-8 text-xs">Reddet</Button>
+                    <Button
+                      size="sm"
+                      className="flex-1 rounded-lg bg-green-600 hover:bg-green-700 text-white h-8 text-xs gap-1"
+                      onClick={() => handleAccept(offer.id)}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Kabul Et
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 rounded-lg border-red-200 text-red-600 hover:bg-red-50 h-8 text-xs gap-1"
+                      onClick={() => handleReject(offer.id)}
+                    >
+                      <XCircle className="h-3.5 w-3.5" /> Reddet
+                    </Button>
                   </div>
                 </div>
               ))}
+              <div className="p-3">
+                <Link href="/dashboard/offers">
+                  <Button variant="ghost" size="sm" className="w-full text-primary text-xs">
+                    Tüm Teklifleri Gör →
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </div>

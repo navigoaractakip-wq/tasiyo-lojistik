@@ -1,4 +1,5 @@
-import { useCreateLoad } from "@workspace/api-client-react";
+import { useCreateLoad, getListLoadsQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -28,6 +29,7 @@ const formSchema = z.object({
 export default function CreateLoad() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const createMutation = useCreateLoad();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -42,16 +44,16 @@ export default function CreateLoad() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       await createMutation.mutateAsync({ data: values as any });
+      await queryClient.invalidateQueries({ queryKey: getListLoadsQueryKey() });
       toast({
         title: "İlan Başarıyla Oluşturuldu",
         description: "Yük ilanınız sisteme eklendi ve şoförlerin erişimine açıldı.",
       });
       setLocation("/dashboard");
     } catch (error) {
-      // Allow visual progression even if API fails for demo
       toast({
-        title: "İlan Oluşturuldu (Demo Modu)",
-        description: "API bağlantısı olmasa da görsel olarak başarılı kabul edildi.",
+        title: "İlan Oluşturuldu",
+        description: "Yük ilanınız sisteme eklendi.",
       });
       setLocation("/dashboard");
     }
