@@ -455,6 +455,7 @@ export type ListLoadsParams = {
   origin?: string;
   destination?: string;
   page?: number;
+  mine?: "true" | "false";
 };
 
 export type ListLoadsStatus =

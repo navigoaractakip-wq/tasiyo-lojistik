@@ -6,7 +6,7 @@ import {
   ReactNode,
   useCallback,
 } from "react";
-import { getMe, logout as apiLogout } from "@workspace/api-client-react";
+import { getMe, logout as apiLogout, setAuthTokenGetter } from "@workspace/api-client-react";
 
 export type Role = "admin" | "corporate" | "driver" | "individual" | null;
 
@@ -39,6 +39,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => localStorage.getItem(TOKEN_KEY)
   );
   const [isLoading, setIsLoading] = useState(true);
+
+  // Wire the token into the shared fetch client so all API calls include it
+  useEffect(() => {
+    setAuthTokenGetter(token ? () => token : null);
+  }, [token]);
 
   const fetchMe = useCallback(async (tok: string) => {
     try {

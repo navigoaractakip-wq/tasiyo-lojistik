@@ -1,4 +1,4 @@
-import { useCreateLoad, getListLoadsQueryKey } from "@workspace/api-client-react";
+import { useCreateLoad } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,7 +44,8 @@ export default function CreateLoad() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       await createMutation.mutateAsync({ data: values as any });
-      await queryClient.invalidateQueries({ queryKey: getListLoadsQueryKey() });
+      // Invalidate all loads queries (works for any params combination)
+      await queryClient.invalidateQueries({ queryKey: ["/api/loads"] });
       toast({
         title: "İlan Başarıyla Oluşturuldu",
         description: "Yük ilanınız sisteme eklendi ve şoförlerin erişimine açıldı.",

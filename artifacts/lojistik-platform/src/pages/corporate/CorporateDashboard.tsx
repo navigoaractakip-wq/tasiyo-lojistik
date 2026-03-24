@@ -28,7 +28,7 @@ const SIDEBAR_MOCK_OFFERS = [
 
 export default function CorporateDashboard() {
   const { toast } = useToast();
-  const { data: loadsData } = useListLoads({ status: "active" });
+  const { data: loadsData } = useListLoads({ status: "active", mine: "true" });
   const { data: offersData } = useListOffers({ status: "pending" });
   const [dismissedOffers, setDismissedOffers] = useState<Record<string, "accepted" | "rejected">>({});
 

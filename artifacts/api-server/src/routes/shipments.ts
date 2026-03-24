@@ -81,6 +81,65 @@ router.get("/shipments", async (req, res): Promise<void> => {
   res.json(ListShipmentsResponse.parse({ shipments: mapped, total: mapped.length, page: 1, pageSize: mapped.length }));
 });
 
+router.patch("/shipments/:id/status", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = parseInt(raw, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const { status, description, lat, lng } = req.body;
+  if (!status) { res.status(400).json({ error: "status required" }); return; }
+
+  const validStatuses = ["pickup", "in_transit", "delivered", "cancelled"];
+  if (!validStatuses.includes(status)) { res.status(400).json({ error: "invalid status" }); return; }
+
+  const [shipment] = await db
+    .update(shipmentsTable)
+    .set({
+      status,
+      ...(lat != null && lng != null ? { currentLat: lat, currentLng: lng } : {}),
+    })
+    .where(eq(shipmentsTable.id, id))
+    .returning();
+
+  if (!shipment) { res.status(404).json({ error: "Shipment not found" }); return; }
+
+  await db.insert(shipmentEventsTable).values({
+    shipmentId: id,
+    event: status,
+    description: description ?? null,
+    lat: lat ?? null,
+    lng: lng ?? null,
+  });
+
+  const events = await db.select().from(shipmentEventsTable).where(eq(shipmentEventsTable.shipmentId, id));
+  const [load] = await db.select().from(loadsTable).where(eq(loadsTable.id, shipment.loadId));
+  let driver = null;
+  if (shipment.driverId) {
+    const [d] = await db.select().from(usersTable).where(eq(usersTable.id, shipment.driverId));
+    driver = d || null;
+  }
+
+  res.json(GetShipmentResponse.parse(mapShipment(shipment, events, driver, load)));
+});
+
+router.patch("/shipments/:id/location", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = parseInt(raw, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const { lat, lng } = req.body;
+  if (lat == null || lng == null) { res.status(400).json({ error: "lat and lng required" }); return; }
+
+  const [shipment] = await db
+    .update(shipmentsTable)
+    .set({ currentLat: lat, currentLng: lng })
+    .where(eq(shipmentsTable.id, id))
+    .returning();
+
+  if (!shipment) { res.status(404).json({ error: "Shipment not found" }); return; }
+  res.json({ ok: true, lat, lng });
+});
+
 router.get("/shipments/:id", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);

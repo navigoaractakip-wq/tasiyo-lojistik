@@ -8,6 +8,7 @@ import {
   UpdateLoadBody,
   UpdateLoadResponse,
 } from "@workspace/api-zod";
+import { optionalAuth, type AuthRequest } from "../lib/auth-middleware";
 
 const router: IRouter = Router();
 
@@ -49,8 +50,8 @@ function mapLoad(load: typeof loadsTable.$inferSelect, poster?: typeof usersTabl
   };
 }
 
-router.get("/loads", async (req, res): Promise<void> => {
-  const { status, vehicleType, loadType } = req.query;
+router.get("/loads", optionalAuth, async (req: AuthRequest, res): Promise<void> => {
+  const { status, vehicleType, loadType, mine } = req.query;
 
   const allLoads = await db.select().from(loadsTable).orderBy(loadsTable.createdAt);
 
@@ -58,6 +59,10 @@ router.get("/loads", async (req, res): Promise<void> => {
   if (status && typeof status === "string") filtered = filtered.filter((l) => l.status === status);
   if (vehicleType && typeof vehicleType === "string") filtered = filtered.filter((l) => l.vehicleType === vehicleType);
   if (loadType && typeof loadType === "string") filtered = filtered.filter((l) => l.loadType === loadType);
+  // When ?mine=true is sent, return only the authenticated user's loads
+  if (mine === "true" && req.userId) {
+    filtered = filtered.filter((l) => l.postedById === req.userId);
+  }
 
   const allUsers = await db.select().from(usersTable);
   const userMap = new Map(allUsers.map((u) => [u.id, u]));
@@ -74,7 +79,7 @@ router.get("/loads", async (req, res): Promise<void> => {
   );
 });
 
-router.post("/loads", async (req, res): Promise<void> => {
+router.post("/loads", optionalAuth, async (req: AuthRequest, res): Promise<void> => {
   const parsed = CreateLoadBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -102,10 +107,17 @@ router.post("/loads", async (req, res): Promise<void> => {
       originLng: 32.8597 + (Math.random() - 0.5) * 10,
       destLat: 39.9334 + (Math.random() - 0.5) * 5,
       destLng: 32.8597 + (Math.random() - 0.5) * 10,
+      postedById: req.userId ?? null,
     })
     .returning();
 
-  res.status(201).json(GetLoadResponse.parse(mapLoad(load)));
+  let poster = null;
+  if (load.postedById) {
+    const [u] = await db.select().from(usersTable).where(eq(usersTable.id, load.postedById));
+    poster = u || null;
+  }
+
+  res.status(201).json(GetLoadResponse.parse(mapLoad(load, poster)));
 });
 
 router.get("/loads/:id", async (req, res): Promise<void> => {

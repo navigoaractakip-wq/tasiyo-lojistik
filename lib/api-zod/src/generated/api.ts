@@ -344,8 +344,8 @@ export const CreateLoadBody = zod.object({
   pricingModel: zod.enum(["fixed", "bidding"]),
   price: zod.number().optional(),
   minBid: zod.number().optional(),
-  pickupDate: zod.date().optional(),
-  deliveryDate: zod.date().optional(),
+  pickupDate: zod.coerce.date().optional(),
+  deliveryDate: zod.coerce.date().optional(),
 });
 
 /**
