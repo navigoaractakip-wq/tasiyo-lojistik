@@ -23,6 +23,7 @@ export default function Login() {
   const [identifier, setIdentifier] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  const [devCode, setDevCode] = useState<string | null>(null);
 
   // Already logged in — redirect
   if (user) {
@@ -47,6 +48,12 @@ export default function Login() {
       });
       if (res.success) {
         setStep("otp");
+        if (res.devCode) {
+          setDevCode(res.devCode);
+          setOtp(res.devCode);
+        } else {
+          setDevCode(null);
+        }
         toast({
           title: "Kod Gönderildi",
           description: res.message,
@@ -205,6 +212,29 @@ export default function Login() {
                     <Shield className="w-8 h-8 text-blue-600" />
                   </div>
                 </div>
+
+                {devCode && (
+                  <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-1">
+                    <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">
+                      Geliştirme Modu — Test Kodu
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-3xl font-bold tracking-[0.4em] text-amber-900 font-mono">
+                        {devCode}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setOtp(devCode)}
+                        className="text-xs bg-amber-200 hover:bg-amber-300 text-amber-800 font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Kullan
+                      </button>
+                    </div>
+                    <p className="text-xs text-amber-600 mt-2">
+                      SMTP/SMS yapılandırıldığında bu kutu görünmeyecek.
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="otp">Doğrulama Kodu</Label>

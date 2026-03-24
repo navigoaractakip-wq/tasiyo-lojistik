@@ -19,6 +19,7 @@ export const SendOtpResponse = zod.object({
   success: zod.boolean(),
   message: zod.string(),
   channel: zod.string().optional(),
+  devCode: zod.string().optional(),
 });
 
 /**
@@ -160,6 +161,7 @@ export const RegisterResponse = zod.object({
   message: zod.string(),
   identifier: zod.string().optional(),
   identifierType: zod.enum(["phone", "email"]).optional(),
+  devCode: zod.string().optional(),
 });
 
 /**

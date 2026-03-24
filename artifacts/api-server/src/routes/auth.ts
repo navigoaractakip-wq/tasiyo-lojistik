@@ -111,10 +111,11 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     RegisterResponse.parse({
       success: true,
       message: channel === "console"
-        ? "Hesabınız oluşturuldu. Doğrulama kodu sunucu konsoluna yazdırıldı."
+        ? "Hesabınız oluşturuldu. SMTP/SMS yapılandırılmadığı için kod aşağıda gösteriliyor."
         : `Doğrulama kodu ${channel === "sms" ? "telefonunuza" : "e-postanıza"} gönderildi.`,
       identifier,
       identifierType,
+      devCode: channel === "console" ? code : undefined,
     })
   );
 });
@@ -187,11 +188,18 @@ router.post("/auth/send-otp", async (req, res): Promise<void> => {
     channel = sent ? "email" : "console";
   }
 
+  if (channel === "console") {
+    console.log(`\n🔐 [OTP - GİRİŞ] ${identifier} → KOD: ${code}\n`);
+  }
+
   res.json(
     SendOtpResponse.parse({
       success: true,
-      message: `Doğrulama kodu ${identifierType === "phone" ? "telefonunuza" : "e-postanıza"} gönderildi.`,
+      message: channel === "console"
+        ? "SMTP/SMS yapılandırılmadığı için kod aşağıda gösteriliyor."
+        : `Doğrulama kodu ${identifierType === "phone" ? "telefonunuza" : "e-postanıza"} gönderildi.`,
       channel,
+      devCode: channel === "console" ? code : undefined,
     })
   );
 });

@@ -26,6 +26,7 @@ export default function Register() {
   const [otp, setOtp] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [registrationMessage, setRegistrationMessage] = useState("");
+  const [devCode, setDevCode] = useState<string | null>(null);
 
   const { mutate: register, isPending } = useRegister();
 
@@ -66,6 +67,10 @@ export default function Register() {
           setIdentifier(data.identifier ?? form.email);
           setIdentifierType(data.identifierType ?? "email");
           setRegistrationMessage(data.message);
+          if (data.devCode) {
+            setDevCode(data.devCode);
+            setOtp(data.devCode);
+          }
           setStep("verify");
         },
         onError: (err: unknown) => {
@@ -336,15 +341,34 @@ export default function Register() {
                   <p className="text-sm text-gray-500 mt-2 leading-relaxed">{registrationMessage}</p>
                 </div>
 
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-                  <p className="text-sm text-amber-800 font-medium">
-                    📋 Geliştirme Modunda Giriş
-                  </p>
-                  <p className="text-xs text-amber-700 mt-1">
-                    SMTP/SMS yapılandırılmadığından OTP kodu API sunucusunun konsoluna yazdırılıyor.
-                    Yönetici konsolda <strong>[OTP - KAYIT]</strong> satırını arayın.
-                  </p>
-                </div>
+                {devCode ? (
+                  <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-4">
+                    <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">
+                      Geliştirme Modu — Test Kodu
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-3xl font-bold tracking-[0.4em] text-amber-900 font-mono">
+                        {devCode}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setOtp(devCode)}
+                        className="text-xs bg-amber-200 hover:bg-amber-300 text-amber-800 font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Kullan
+                      </button>
+                    </div>
+                    <p className="text-xs text-amber-600 mt-2">
+                      SMTP/SMS yapılandırıldığında bu kutu görünmeyecek.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                    <p className="text-xs text-blue-700">
+                      Doğrulama kodu {identifierType === "phone" ? "telefonunuza" : "e-postanıza"} gönderildi.
+                    </p>
+                  </div>
+                )}
 
                 <form onSubmit={handleVerify} className="space-y-4">
                   <div className="space-y-1.5">

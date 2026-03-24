@@ -527,4 +527,5 @@ export interface RegisterResponse {
   message: string;
   identifier?: string;
   identifierType?: "phone" | "email";
+  devCode?: string;
 }
