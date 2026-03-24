@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useUpdateUser } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,18 +17,26 @@ import {
 export default function CorporateSettings() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [saving, setSaving] = useState(false);
 
   const [profile, setProfile] = useState({
-    companyName: user?.company ?? "Borusan Lojistik A.Ş.",
-    contactName: user?.name ?? "Ahmet Yıldız",
-    email: user?.email ?? "info@borusan.com",
-    phone: user?.phone ?? "+90 212 444 0 211",
-    address: "Rumeli Caddesi No:22, Şişli, İstanbul",
-    website: "www.borusan.com",
-    taxNumber: "1234567890",
-    city: "İstanbul",
+    companyName: "",
+    contactName: "",
+    phone: "",
+    address: "",
+    website: "",
+    taxNumber: "",
   });
+
+  useEffect(() => {
+    if (user) {
+      setProfile(prev => ({
+        ...prev,
+        companyName: user.company ?? "",
+        contactName: user.name ?? "",
+        phone: user.phone ?? "",
+      }));
+    }
+  }, [user]);
 
   const [notifications, setNotifications] = useState({
     newOffer: true,
@@ -39,11 +48,31 @@ export default function CorporateSettings() {
     emailEnabled: true,
   });
 
-  const handleSave = async () => {
-    setSaving(true);
-    await new Promise(r => setTimeout(r, 1000));
-    setSaving(false);
-    toast({ title: "Ayarlar Kaydedildi", description: "Değişiklikleriniz başarıyla güncellendi." });
+  const { mutate: updateUser, isPending: saving } = useUpdateUser({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Ayarlar Kaydedildi", description: "Profil bilgileriniz başarıyla güncellendi." });
+      },
+      onError: (err: any) => {
+        toast({
+          title: "Hata",
+          description: err?.data?.message ?? "Kayıt sırasında bir sorun oluştu.",
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  const handleSave = () => {
+    if (!user?.id) return;
+    updateUser({
+      id: user.id,
+      data: {
+        name: profile.contactName || undefined,
+        phone: profile.phone || undefined,
+        company: profile.companyName || undefined,
+      },
+    });
   };
 
   const toggleNotification = (key: keyof typeof notifications) => {
@@ -78,7 +107,7 @@ export default function CorporateSettings() {
             <Avatar className="h-20 w-20 border-2 border-border">
               <AvatarImage src="" />
               <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                {profile.companyName.slice(0,2).toUpperCase()}
+                {(profile.companyName || profile.contactName || "?").slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <Button variant="outline" size="sm" className="gap-2">
@@ -89,42 +118,77 @@ export default function CorporateSettings() {
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Şirket Adı</Label>
-              <Input value={profile.companyName} onChange={e => setProfile(p => ({ ...p, companyName: e.target.value }))} />
+              <Input
+                value={profile.companyName}
+                onChange={e => setProfile(p => ({ ...p, companyName: e.target.value }))}
+                placeholder="Şirket adı"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Yetkili Kişi</Label>
-              <Input value={profile.contactName} onChange={e => setProfile(p => ({ ...p, contactName: e.target.value }))} />
+              <Input
+                value={profile.contactName}
+                onChange={e => setProfile(p => ({ ...p, contactName: e.target.value }))}
+                placeholder="Ad Soyad"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>E-posta</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input className="pl-9" type="email" value={profile.email} onChange={e => setProfile(p => ({ ...p, email: e.target.value }))} />
+                <Input
+                  className="pl-9 bg-muted/40 text-muted-foreground"
+                  type="email"
+                  value={user?.email ?? ""}
+                  readOnly
+                  title="E-posta adresi değiştirilemez"
+                />
               </div>
+              <p className="text-xs text-muted-foreground">E-posta adresi değiştirilemez</p>
             </div>
             <div className="space-y-1.5">
               <Label>Telefon</Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input className="pl-9" type="tel" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
+                <Input
+                  className="pl-9"
+                  type="tel"
+                  value={profile.phone}
+                  onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))}
+                  placeholder="+90 5xx xxx xx xx"
+                />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label>Vergi No</Label>
-              <Input value={profile.taxNumber} onChange={e => setProfile(p => ({ ...p, taxNumber: e.target.value }))} />
+              <Input
+                value={profile.taxNumber}
+                onChange={e => setProfile(p => ({ ...p, taxNumber: e.target.value }))}
+                placeholder="Vergi numaranız"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>Web Sitesi</Label>
               <div className="relative">
                 <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input className="pl-9" value={profile.website} onChange={e => setProfile(p => ({ ...p, website: e.target.value }))} />
+                <Input
+                  className="pl-9"
+                  value={profile.website}
+                  onChange={e => setProfile(p => ({ ...p, website: e.target.value }))}
+                  placeholder="www.siteniz.com"
+                />
               </div>
             </div>
             <div className="space-y-1.5 md:col-span-2">
               <Label>Adres</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input className="pl-9" value={profile.address} onChange={e => setProfile(p => ({ ...p, address: e.target.value }))} />
+                <Input
+                  className="pl-9"
+                  value={profile.address}
+                  onChange={e => setProfile(p => ({ ...p, address: e.target.value }))}
+                  placeholder="İl, İlçe, Sokak..."
+                />
               </div>
             </div>
           </div>
@@ -149,7 +213,7 @@ export default function CorporateSettings() {
             ].map(ch => (
               <button
                 key={ch.key}
-                onClick={() => toggleNotification(ch.key as any)}
+                onClick={() => toggleNotification(ch.key as keyof typeof notifications)}
                 className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-colors text-sm font-medium
                   ${notifications[ch.key as keyof typeof notifications]
                     ? "border-primary bg-primary/5 text-primary"
@@ -165,7 +229,6 @@ export default function CorporateSettings() {
 
           <Separator />
 
-          {/* Events */}
           {[
             { key: "newOffer",          label: "Yeni Teklif",           desc: "İlanınıza yeni teklif geldiğinde" },
             { key: "offerAccepted",     label: "Teklif Kabulü",         desc: "Teklifiniz kabul/reddedildiğinde" },
@@ -179,7 +242,7 @@ export default function CorporateSettings() {
                 <p className="text-xs text-muted-foreground">{n.desc}</p>
               </div>
               <button
-                onClick={() => toggleNotification(n.key as any)}
+                onClick={() => toggleNotification(n.key as keyof typeof notifications)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
                   ${notifications[n.key as keyof typeof notifications] ? "bg-primary" : "bg-gray-200"}`}
               >
