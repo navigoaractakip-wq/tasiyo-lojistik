@@ -248,7 +248,14 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-blue-300 text-sm">
+        <p className="text-center text-sm text-blue-200/70 mt-2">
+          Hesabınız yok mu?{" "}
+          <a href="/kayit" className="font-semibold text-white hover:underline">
+            Ücretsiz Kayıt Ol
+          </a>
+        </p>
+
+        <p className="text-center text-blue-300/50 text-xs mt-4">
           © {new Date().getFullYear()} TaşıYo Lojistik. Tüm hakları saklıdır.
         </p>
       </div>

@@ -11,6 +11,8 @@ import {
   VerifyOtpResponse,
   LogoutResponse,
   GetMeResponse,
+  RegisterBody,
+  RegisterResponse,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -38,6 +40,84 @@ function mapUser(u: typeof usersTable.$inferSelect) {
     createdAt: u.createdAt,
   };
 }
+
+router.post("/auth/register", async (req, res): Promise<void> => {
+  const parsed = RegisterBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ success: false, message: "Geçersiz form verisi." });
+    return;
+  }
+
+  const { name, email, phone, role, company } = parsed.data;
+
+  // Check if email already exists
+  const existing = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email.toLowerCase()));
+
+  if (existing.length > 0) {
+    res.status(409).json({ success: false, message: "Bu e-posta adresi zaten kayıtlı." });
+    return;
+  }
+
+  // Create user
+  const [newUser] = await db
+    .insert(usersTable)
+    .values({
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      phone: phone?.trim() || null,
+      role,
+      company: company?.trim() || null,
+      status: "active",
+    })
+    .returning();
+
+  console.log(`[REGISTER] Yeni kullanıcı oluşturuldu: ${newUser.name} (${newUser.email}) - Rol: ${newUser.role}`);
+
+  // Auto-send OTP
+  const identifier = phone?.trim() || email.toLowerCase().trim();
+  const identifierType = phone?.trim() ? "phone" : "email";
+  const code = generateOtp();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await db.insert(otpCodesTable).values({ identifier, identifierType, code, expiresAt });
+
+  let channel = "console";
+  if (identifierType === "phone") {
+    const sent = await sendSms(identifier, `TaşıYo doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir.`);
+    channel = sent ? "sms" : "console";
+  } else {
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
+        <h2 style="color: #1e40af;">🚚 TaşıYo — Hesabınız Oluşturuldu!</h2>
+        <p>Merhaba <strong>${name}</strong>,</p>
+        <p>Hesabınız başarıyla oluşturuldu. Giriş doğrulama kodunuz:</p>
+        <div style="background:#f3f4f6; border-radius:8px; padding:20px; text-align:center; margin:16px 0;">
+          <span style="font-size:2.5rem; font-weight:700; letter-spacing:0.3em; color:#1e40af;">${code}</span>
+        </div>
+        <p style="color:#6b7280; font-size:0.9rem;">Bu kod 10 dakika geçerlidir.</p>
+      </div>`;
+    const sent = await sendEmail(identifier, "TaşıYo — Hesabınız Oluşturuldu", html);
+    channel = sent ? "email" : "console";
+  }
+
+  if (channel === "console") {
+    console.log(`\n🔐 [OTP - KAYIT] ${identifier} → KOD: ${code}\n`);
+  }
+
+  res.json(
+    RegisterResponse.parse({
+      success: true,
+      message: channel === "console"
+        ? "Hesabınız oluşturuldu. Doğrulama kodu sunucu konsoluna yazdırıldı."
+        : `Doğrulama kodu ${channel === "sms" ? "telefonunuza" : "e-postanıza"} gönderildi.`,
+      identifier,
+      identifierType,
+    })
+  );
+});
 
 router.post("/auth/send-otp", async (req, res): Promise<void> => {
   const parsed = SendOtpBody.safeParse(req.body);

@@ -506,3 +506,25 @@ export type ListVehiclesParams = {
 export type ListNotificationsParams = {
   unreadOnly?: boolean;
 };
+
+export type RegisterRequestRole = (typeof RegisterRequestRole)[keyof typeof RegisterRequestRole];
+
+export const RegisterRequestRole = {
+  corporate: "corporate",
+  driver: "driver",
+} as const;
+
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  phone?: string;
+  role: RegisterRequestRole;
+  company?: string;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  identifier?: string;
+  identifierType?: "phone" | "email";
+}

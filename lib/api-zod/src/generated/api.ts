@@ -145,6 +145,24 @@ export const TestEmailResponse = zod.object({
 });
 
 /**
+ * @summary Register a new user account
+ */
+export const RegisterBody = zod.object({
+  name: zod.string().min(2),
+  email: zod.string().email(),
+  phone: zod.string().optional(),
+  role: zod.enum(["corporate", "driver"]),
+  company: zod.string().optional(),
+});
+
+export const RegisterResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+  identifier: zod.string().optional(),
+  identifierType: zod.enum(["phone", "email"]).optional(),
+});
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

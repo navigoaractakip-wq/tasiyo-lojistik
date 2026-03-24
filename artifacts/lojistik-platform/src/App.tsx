@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 
 // Auth
 import Login from "@/pages/Login";
+import Register from "@/pages/Register";
 
 // Admin
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -70,6 +71,7 @@ function Router() {
     <Switch>
       {/* Auth */}
       <Route path="/giris" component={Login} />
+      <Route path="/kayit" component={Register} />
 
       {/* Root redirect */}
       <Route path="/">
