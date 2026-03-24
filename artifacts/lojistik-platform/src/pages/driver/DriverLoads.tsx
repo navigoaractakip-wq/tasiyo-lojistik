@@ -2,11 +2,22 @@ import { useState } from "react";
 import { useListLoads } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Search, Filter, MapPin, Weight, Truck, DollarSign,
-  Star, Clock, ChevronRight, SlidersHorizontal, Zap, Package,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Search, MapPin, Weight, Truck, Clock, ChevronRight,
+  SlidersHorizontal, Zap, Package, Star, CheckCircle2,
 } from "lucide-react";
 
 const MOCK_LOADS = [
@@ -52,13 +63,124 @@ const MOCK_LOADS = [
   },
 ];
 
+type Load = typeof MOCK_LOADS[0];
+
 const VEHICLE_TYPES = ["Tümü", "TIR", "Kapalı Kasa", "Açık Kasa", "Frigorifik", "Lowbed", "Tenteli TIR"];
-const LOAD_TYPES   = ["Tümü", "Parsiyel", "Komple", "Konteyner", "Dökme", "Soğuk Zincir", "Proje Kargo"];
+
+function OfferDialog({ load, onClose }: { load: Load; onClose: () => void }) {
+  const { toast } = useToast();
+  const [price, setPrice] = useState(load.price ? String(load.price) : "");
+  const [note, setNote] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!price || isNaN(Number(price)) || Number(price) <= 0) {
+      toast({ title: "Hata", description: "Geçerli bir fiyat giriniz.", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 800));
+    setLoading(false);
+    setSubmitted(true);
+  };
+
+  if (submitted) {
+    return (
+      <DialogContent className="max-w-sm">
+        <div className="text-center py-6">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-8 h-8 text-green-500" />
+          </div>
+          <h3 className="text-lg font-bold text-gray-900 mb-1">Teklifiniz Alındı!</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            <strong>{Number(price).toLocaleString("tr-TR")} ₺</strong> teklifiniz iletildi.<br />
+            Firma en kısa sürede sizinle iletişime geçecek.
+          </p>
+          <Button className="w-full" onClick={onClose}>Kapat</Button>
+        </div>
+      </DialogContent>
+    );
+  }
+
+  return (
+    <DialogContent className="max-w-sm">
+      <DialogHeader>
+        <DialogTitle>Teklif Ver</DialogTitle>
+        <DialogDescription className="text-xs leading-relaxed">
+          {load.title}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 text-sm mb-1">
+        <div className="flex items-center gap-2 text-gray-600">
+          <MapPin className="w-3.5 h-3.5 text-green-500 shrink-0" />
+          <span>{load.origin}</span>
+        </div>
+        <div className="flex items-center gap-2 text-gray-600">
+          <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0" />
+          <span>{load.destination}</span>
+        </div>
+        <div className="flex gap-4 text-xs text-gray-500 pt-1 border-t border-gray-100">
+          <span>{load.weight} ton</span>
+          <span>{load.vehicleType}</span>
+          <span>{load.distance} km</span>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div>
+          <Label className="text-sm font-medium">
+            Teklif Fiyatı (₺) <span className="text-red-500">*</span>
+          </Label>
+          <div className="relative mt-1">
+            <Input
+              type="number"
+              min={1}
+              placeholder={load.price ? String(load.price) : "Fiyatınızı girin"}
+              value={price}
+              onChange={e => setPrice(e.target.value)}
+              className="pr-8"
+              autoFocus
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-400">₺</span>
+          </div>
+          {load.price && (
+            <p className="text-xs text-muted-foreground mt-1">
+              İlan fiyatı: <span className="font-semibold text-green-600">{load.price.toLocaleString("tr-TR")} ₺</span>
+            </p>
+          )}
+        </div>
+
+        <div>
+          <Label className="text-sm font-medium">Not (opsiyonel)</Label>
+          <Textarea
+            placeholder="Taşıma şartları, araç bilgisi vb..."
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            className="mt-1 resize-none h-20 text-sm"
+          />
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading} className="flex-1">
+            Vazgeç
+          </Button>
+          <Button type="submit" disabled={loading} className="flex-1">
+            {loading ? "Gönderiliyor..." : "Teklif Gönder"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  );
+}
 
 export default function DriverLoads() {
   const [search, setSearch] = useState("");
   const [vehicleFilter, setVehicleFilter] = useState("Tümü");
   const [showFilters, setShowFilters] = useState(false);
+  const [offerLoad, setOfferLoad] = useState<Load | null>(null);
   const { data } = useListLoads({ status: "active" });
 
   const allLoads = (data?.loads?.length ? data.loads : MOCK_LOADS) as typeof MOCK_LOADS;
@@ -139,7 +261,6 @@ export default function DriverLoads() {
                   <Badge variant="outline" className="text-xs shrink-0">{load.loadType}</Badge>
                 </div>
 
-                {/* Route */}
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex flex-col items-center gap-0.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
@@ -152,7 +273,6 @@ export default function DriverLoads() {
                   </div>
                 </div>
 
-                {/* Details row */}
                 <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
                   <div className="flex items-center gap-1"><Weight className="w-3.5 h-3.5" />{load.weight} ton</div>
                   <div className="flex items-center gap-1"><Truck className="w-3.5 h-3.5" />{load.vehicleType}</div>
@@ -170,7 +290,11 @@ export default function DriverLoads() {
                       <Clock className="w-3 h-3" />{(load as any).postedAgo}
                     </span>
                   </div>
-                  <Button size="sm" className="h-8 px-4 rounded-xl gap-1">
+                  <Button
+                    size="sm"
+                    className="h-8 px-4 rounded-xl gap-1"
+                    onClick={() => setOfferLoad(load)}
+                  >
                     Teklif Ver <ChevronRight className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -187,6 +311,11 @@ export default function DriverLoads() {
           </div>
         )}
       </div>
+
+      {/* Offer Dialog */}
+      <Dialog open={!!offerLoad} onOpenChange={open => !open && setOfferLoad(null)}>
+        {offerLoad && <OfferDialog load={offerLoad} onClose={() => setOfferLoad(null)} />}
+      </Dialog>
     </div>
   );
 }

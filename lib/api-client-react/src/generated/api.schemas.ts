@@ -354,6 +354,7 @@ export interface SendOtpResponse {
   success: boolean;
   message: string;
   channel?: string;
+  devCode?: string;
 }
 
 export type VerifyOtpRequestIdentifierType =

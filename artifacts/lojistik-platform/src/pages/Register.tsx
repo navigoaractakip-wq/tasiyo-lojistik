@@ -74,9 +74,19 @@ export default function Register() {
           setStep("verify");
         },
         onError: (err: unknown) => {
-          const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-            ?? "Kayıt sırasında bir hata oluştu.";
-          toast({ title: "Hata", description: msg, variant: "destructive" });
+          const apiErr = err as { data?: { message?: string }; status?: number; message?: string };
+          const msg = apiErr?.data?.message ?? apiErr?.message ?? "Kayıt sırasında bir hata oluştu.";
+          const isConflict = apiErr?.status === 409;
+          toast({
+            title: isConflict ? "E-posta Zaten Kayıtlı" : "Hata",
+            description: isConflict
+              ? "Bu e-posta ile kayıtlı bir hesap var. Giriş sayfasından giriş yapabilirsiniz."
+              : msg,
+            variant: "destructive",
+          });
+          if (isConflict) {
+            setTimeout(() => setLocation("/giris"), 3000);
+          }
         },
       }
     );
