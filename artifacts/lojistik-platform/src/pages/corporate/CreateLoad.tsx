@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { useCreateLoad } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,18 +12,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Truck, Calendar, DollarSign, Scale, FileText } from "lucide-react";
+import {
+  MapPin, Truck, Calendar, DollarSign, Scale, FileText, Plus, X, ArrowDown,
+} from "lucide-react";
 
 const formSchema = z.object({
   title: z.string().min(5, "Başlık en az 5 karakter olmalıdır"),
-  origin: z.string().min(3, "Yükleme noktası zorunludur"),
-  destination: z.string().min(3, "Teslim noktası zorunludur"),
   weight: z.coerce.number().min(0.1, "Geçerli bir ağırlık girin"),
   loadType: z.string().min(1, "Yük tipi seçin"),
   vehicleType: z.string().min(1, "Araç tipi seçin"),
   pricingModel: z.enum(["fixed", "bidding"]),
   price: z.coerce.number().optional(),
-  pickupDate: z.string().min(1, "Tarih seçin"),
+  pickupDate: z.string().min(1, "Yükleme tarihi seçin"),
+  deliveryDate: z.string().optional(),
   description: z.string().optional(),
 });
 
@@ -31,6 +33,9 @@ export default function CreateLoad() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const createMutation = useCreateLoad();
+
+  const [pickupStops, setPickupStops] = useState<string[]>([""]);
+  const [deliveryStops, setDeliveryStops] = useState<string[]>([""]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -41,17 +46,51 @@ export default function CreateLoad() {
     },
   });
 
+  const addStop = (type: "pickup" | "delivery") => {
+    if (type === "pickup") setPickupStops((p) => [...p, ""]);
+    else setDeliveryStops((p) => [...p, ""]);
+  };
+
+  const removeStop = (type: "pickup" | "delivery", idx: number) => {
+    if (type === "pickup") setPickupStops((p) => p.filter((_, i) => i !== idx));
+    else setDeliveryStops((p) => p.filter((_, i) => i !== idx));
+  };
+
+  const updateStop = (type: "pickup" | "delivery", idx: number, val: string) => {
+    if (type === "pickup") setPickupStops((p) => p.map((s, i) => (i === idx ? val : s)));
+    else setDeliveryStops((p) => p.map((s, i) => (i === idx ? val : s)));
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    const origin = pickupStops.filter(Boolean).join(" | ") || "Belirtilmedi";
+    const destination = deliveryStops.filter(Boolean).join(" | ") || "Belirtilmedi";
+
+    if (!pickupStops.some(Boolean)) {
+      toast({ title: "Hata", description: "En az bir yükleme noktası girin.", variant: "destructive" });
+      return;
+    }
+    if (!deliveryStops.some(Boolean)) {
+      toast({ title: "Hata", description: "En az bir teslim noktası girin.", variant: "destructive" });
+      return;
+    }
+
     try {
-      await createMutation.mutateAsync({ data: values as any });
-      // Invalidate all loads queries (works for any params combination)
+      await createMutation.mutateAsync({
+        data: {
+          ...values,
+          origin,
+          destination,
+          pickupDate: values.pickupDate || undefined,
+          deliveryDate: values.deliveryDate || undefined,
+        } as any,
+      });
       await queryClient.invalidateQueries({ queryKey: ["/api/loads"] });
       toast({
         title: "İlan Başarıyla Oluşturuldu",
         description: "Yük ilanınız sisteme eklendi ve şoförlerin erişimine açıldı.",
       });
       setLocation("/dashboard");
-    } catch (error) {
+    } catch {
       toast({
         title: "İlan Oluşturuldu",
         description: "Yük ilanınız sisteme eklendi.",
@@ -71,18 +110,21 @@ export default function CreateLoad() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* Rota ve Temel Bilgiler */}
+
+          {/* ─── Rota Bilgileri ─── */}
           <Card className="border-border/50 shadow-sm overflow-hidden">
             <div className="bg-primary/5 px-6 py-4 border-b border-border/50 flex items-center gap-3">
               <MapPin className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-bold text-primary">Rota & Temel Bilgiler</h2>
+              <h2 className="text-lg font-bold text-primary">Rota Bilgileri</h2>
             </div>
-            <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <CardContent className="p-6 space-y-6">
+
+              {/* İlan Başlığı */}
               <FormField
                 control={form.control}
                 name="title"
                 render={({ field }) => (
-                  <FormItem className="col-span-1 md:col-span-2">
+                  <FormItem>
                     <FormLabel>İlan Başlığı</FormLabel>
                     <FormControl>
                       <Input placeholder="Örn: İstanbul'dan Ankara'ya Paletli Yük" className="rounded-xl h-12" {...field} />
@@ -92,60 +134,134 @@ export default function CreateLoad() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="origin"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Yükleme Noktası</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input placeholder="İl, İlçe veya Tam Adres" className="pl-10 rounded-xl h-12 border-primary/20 focus-visible:ring-primary" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Yükleme Noktaları */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-sm font-semibold">Yükleme Noktaları</FormLabel>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-8 text-xs"
+                    onClick={() => addStop("pickup")}
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Depo Ekle
+                  </Button>
+                </div>
+                {pickupStops.map((stop, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                      <Input
+                        value={stop}
+                        onChange={(e) => updateStop("pickup", idx, e.target.value)}
+                        placeholder={`${idx + 1}. Yükleme noktası — İl, İlçe veya Adres`}
+                        className="pl-9 rounded-xl h-11"
+                      />
+                    </div>
+                    {pickupStops.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-muted-foreground hover:text-red-500 shrink-0"
+                        onClick={() => removeStop("pickup", idx)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
 
-              <FormField
-                control={form.control}
-                name="destination"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Teslim Noktası</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-accent" />
-                        <Input placeholder="İl, İlçe veya Tam Adres" className="pl-10 rounded-xl h-12 border-accent/30 focus-visible:ring-accent" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Bağlantı ok simgesi */}
+              <div className="flex items-center justify-center">
+                <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                  <ArrowDown className="w-5 h-5" />
+                </div>
+              </div>
 
-              <FormField
-                control={form.control}
-                name="pickupDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Yükleme Tarihi</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input type="date" className="pl-10 rounded-xl h-12" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Teslim Noktaları */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-sm font-semibold">Teslim Noktaları</FormLabel>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-8 text-xs"
+                    onClick={() => addStop("delivery")}
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Nokta Ekle
+                  </Button>
+                </div>
+                {deliveryStops.map((stop, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-accent" />
+                      <Input
+                        value={stop}
+                        onChange={(e) => updateStop("delivery", idx, e.target.value)}
+                        placeholder={`${idx + 1}. Teslim noktası — İl, İlçe veya Adres`}
+                        className="pl-9 rounded-xl h-11 border-accent/30 focus-visible:ring-accent"
+                      />
+                    </div>
+                    {deliveryStops.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-muted-foreground hover:text-red-500 shrink-0"
+                        onClick={() => removeStop("delivery", idx)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Tarihler */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="pickupDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Yükleme Tarihi</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <Input type="date" className="pl-10 rounded-xl h-12" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="deliveryDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Teslim Tarihi <span className="text-muted-foreground font-normal">(opsiyonel)</span></FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-accent" />
+                          <Input type="date" className="pl-10 rounded-xl h-12 border-accent/30 focus-visible:ring-accent" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
             </CardContent>
           </Card>
 
-          {/* Yük ve Araç Özellikleri */}
+          {/* ─── Yük & Araç ─── */}
           <Card className="border-border/50 shadow-sm overflow-hidden">
             <div className="bg-primary/5 px-6 py-4 border-b border-border/50 flex items-center gap-3">
               <Truck className="h-5 w-5 text-primary" />
@@ -222,12 +338,12 @@ export default function CreateLoad() {
                 name="description"
                 render={({ field }) => (
                   <FormItem className="col-span-1 md:col-span-3">
-                    <FormLabel>Açıklama & Ek Notlar (Opsiyonel)</FormLabel>
+                    <FormLabel>Açıklama & Ek Notlar <span className="text-muted-foreground font-normal">(opsiyonel)</span></FormLabel>
                     <FormControl>
                       <div className="relative">
                         <FileText className="absolute left-3 top-4 h-5 w-5 text-muted-foreground" />
-                        <textarea 
-                          className="w-full pl-10 p-3 rounded-xl border border-input bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px] resize-y"
+                        <textarea
+                          className="w-full pl-10 p-3 rounded-xl border border-input bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[90px] resize-y text-sm"
                           placeholder="Şoförlerin bilmesi gereken özel durumları buraya yazabilirsiniz..."
                           {...field}
                         />
@@ -240,7 +356,7 @@ export default function CreateLoad() {
             </CardContent>
           </Card>
 
-          {/* Fiyatlandırma */}
+          {/* ─── Fiyatlandırma ─── */}
           <Card className="border-border/50 shadow-sm overflow-hidden">
             <div className="bg-primary/5 px-6 py-4 border-b border-border/50 flex items-center gap-3">
               <DollarSign className="h-5 w-5 text-primary" />
@@ -264,7 +380,7 @@ export default function CreateLoad() {
                           </FormControl>
                           <div className="flex-1">
                             <FormLabel className="font-bold text-base cursor-pointer">Sabit Fiyat</FormLabel>
-                            <p className="text-sm text-muted-foreground mt-1">İşi yapacak kişiye ödeyeceğiniz net rakamı belirleyin.</p>
+                            <p className="text-sm text-muted-foreground mt-1">Ödeyeceğiniz net tutarı belirleyin.</p>
                           </div>
                         </FormItem>
                         <FormItem className="flex items-center space-x-3 space-y-0 p-4 rounded-xl border cursor-pointer hover:bg-slate-50 transition-colors [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary/5">
@@ -306,10 +422,19 @@ export default function CreateLoad() {
           </Card>
 
           <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" className="rounded-xl h-12 px-6" onClick={() => setLocation("/dashboard")}>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl h-12 px-6"
+              onClick={() => setLocation("/dashboard")}
+            >
               İptal
             </Button>
-            <Button type="submit" disabled={createMutation.isPending} className="rounded-xl h-12 px-8 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 text-base">
+            <Button
+              type="submit"
+              disabled={createMutation.isPending}
+              className="rounded-xl h-12 px-8 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 text-base"
+            >
               {createMutation.isPending ? "Oluşturuluyor..." : "İlanı Yayınla"}
             </Button>
           </div>

@@ -5,22 +5,30 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   UserPlus, Mail, Phone, Crown, Calendar, Info,
+  MoreHorizontal, UserCog, UserMinus, ShieldCheck, Clock,
 } from "lucide-react";
 
 export default function CorporateTeam() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const handleInvite = () => {
+  const showSoon = (label: string) => {
     toast({
       title: "Yakında",
-      description: "Ekip daveti özelliği çok yakında kullanıma açılacak.",
+      description: `"${label}" özelliği çok yakında kullanıma açılacak.`,
     });
   };
 
   const initials = (name: string) =>
-    name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+    name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <div className="space-y-6">
@@ -29,7 +37,7 @@ export default function CorporateTeam() {
           <h1 className="text-2xl font-bold font-display tracking-tight">Ekibim</h1>
           <p className="text-muted-foreground mt-1">Şirket hesabını kullanan çalışanlar</p>
         </div>
-        <Button className="gap-2" onClick={handleInvite}>
+        <Button className="gap-2" onClick={() => showSoon("Üye Davet Et")}>
           <UserPlus className="w-4 h-4" /> Üye Davet Et
         </Button>
       </div>
@@ -46,11 +54,11 @@ export default function CorporateTeam() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Toplam Üye",  value: 1,    color: "text-blue-700",   bg: "bg-blue-50"   },
-          { label: "Aktif",       value: 1,    color: "text-green-700",  bg: "bg-green-50"  },
-          { label: "Bekleyen",    value: 0,    color: "text-orange-700", bg: "bg-orange-50" },
-          { label: "Pasif",       value: 0,    color: "text-gray-600",   bg: "bg-gray-50"   },
-        ].map(s => (
+          { label: "Toplam Üye",  value: 1, color: "text-blue-700",   bg: "bg-blue-50"   },
+          { label: "Aktif",       value: 1, color: "text-green-700",  bg: "bg-green-50"  },
+          { label: "Bekleyen",    value: 0, color: "text-orange-700", bg: "bg-orange-50" },
+          { label: "Pasif",       value: 0, color: "text-gray-600",   bg: "bg-gray-50"   },
+        ].map((s) => (
           <Card key={s.label} className={`border-0 shadow-sm ${s.bg}`}>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -60,7 +68,7 @@ export default function CorporateTeam() {
         ))}
       </div>
 
-      {/* Current User */}
+      {/* Current User Card */}
       {user && (
         <Card className="shadow-sm">
           <CardContent className="p-5">
@@ -70,20 +78,58 @@ export default function CorporateTeam() {
                   {initials(user.name ?? user.email)}
                 </AvatarFallback>
               </Avatar>
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold truncate">{user.name ?? "—"}</p>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem
+                        className="gap-2 cursor-pointer"
+                        onClick={() => showSoon("Profili Düzenle")}
+                      >
+                        <UserCog className="w-4 h-4" />
+                        Profili Düzenle
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="gap-2 cursor-pointer"
+                        onClick={() => showSoon("Rol Değiştir")}
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        Rol Değiştir
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="gap-2 cursor-pointer"
+                        onClick={() => showSoon("Aktiviteyi Görüntüle")}
+                      >
+                        <Clock className="w-4 h-4" />
+                        Aktiviteyi Görüntüle
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="gap-2 cursor-pointer text-red-600 focus:text-red-600"
+                        onClick={() => showSoon("Üyeyi Kaldır")}
+                      >
+                        <UserMinus className="w-4 h-4" />
+                        Üyeyi Kaldır
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
+
                 <p className="text-sm text-muted-foreground">{user.company ?? "Şirket Sahibi"}</p>
 
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                   <Badge className="gap-1 text-xs border-0 bg-purple-100 text-purple-700">
                     <Crown className="w-3.5 h-3.5" /> Hesap Sahibi
                   </Badge>
-                  <Badge
-                    variant="default"
-                    className="text-xs bg-green-100 text-green-700 border-green-200"
-                  >
+                  <Badge className="text-xs bg-green-100 text-green-700 border-green-200">
                     Aktif
                   </Badge>
                 </div>
@@ -101,8 +147,8 @@ export default function CorporateTeam() {
                   )}
                 </div>
 
-                <div className="mt-3 flex gap-4 text-xs">
-                  <div className="flex items-center gap-1 text-muted-foreground">
+                <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />
                     Hesap sahibi
                   </div>

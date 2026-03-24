@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   Truck, Mail, Phone, Loader2, ArrowLeft, Shield,
-  ShieldCheck, Building2, ChevronRight,
+  Building2, ChevronRight,
 } from "lucide-react";
 
 type Step = "role" | "input" | "otp";
@@ -17,18 +17,6 @@ type IdentifierType = "phone" | "email";
 type RoleHint = "admin" | "corporate" | "driver";
 
 const ROLES = [
-  {
-    id: "admin" as RoleHint,
-    label: "Süper Yönetici",
-    desc: "Platform istatistikleri, kullanıcı ve ilan yönetimi",
-    icon: ShieldCheck,
-    color: "from-slate-700 to-slate-900",
-    iconBg: "bg-slate-100",
-    iconColor: "text-slate-700",
-    btnClass: "bg-slate-800 hover:bg-slate-700 text-white",
-    hint: "ahmet@logistikco.com",
-    hintType: "email" as IdentifierType,
-  },
   {
     id: "corporate" as RoleHint,
     label: "Kurumsal Kullanıcı",
@@ -179,7 +167,7 @@ export default function Login() {
               <p className="text-center text-slate-300 text-base font-medium mb-6">
                 Hesap türünüzü seçerek giriş yapın
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto w-full">
                 {ROLES.map((role, i) => {
                   const Icon = role.icon;
                   return (
