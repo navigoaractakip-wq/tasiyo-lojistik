@@ -1,21 +1,34 @@
 import { useState } from "react";
-import { useListUsers, useUpdateUser, ListUsersRole } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useListUsers, useUpdateUser, ListUsersRole, getListUsersQueryKey } from "@workspace/api-client-react";
+import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, MoreHorizontal, CheckCircle2, Ban, Loader2, Users } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Search, MoreHorizontal, CheckCircle2, Ban, Loader2, Users, Trash2, UserCheck,
+} from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function AdminUsers() {
+  const { token } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<ListUsersRole | "all">("all");
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const { data, isLoading } = useListUsers({
     role: roleFilter !== "all" ? (roleFilter as ListUsersRole) : undefined,
@@ -23,9 +36,9 @@ export default function AdminUsers() {
 
   const { mutate: updateUser } = useUpdateUser({
     mutation: {
-      onSuccess: (_data, vars) => {
+      onSuccess: () => {
         setLoadingId(null);
-        queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+        queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
         toast({ title: "Kullanıcı güncellendi", description: "Durum başarıyla değiştirildi." });
       },
       onError: () => {
@@ -40,6 +53,27 @@ export default function AdminUsers() {
     updateUser({ id: userId, data: { status: newStatus } });
   };
 
+  const handleDelete = async (userId: string) => {
+    setLoadingId(userId);
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Silinemedi");
+      }
+      queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+      toast({ title: "Kullanıcı silindi" });
+    } catch (e: any) {
+      toast({ title: "Hata", description: e.message ?? "Silme başarısız.", variant: "destructive" });
+    } finally {
+      setLoadingId(null);
+      setConfirmDeleteId(null);
+    }
+  };
+
   const users = data?.users ?? [];
   const filtered = users.filter(u => {
     if (!search) return true;
@@ -52,11 +86,18 @@ export default function AdminUsers() {
   });
 
   const ROLE_FILTERS = [
-    { value: "all", label: "Tümü" },
+    { value: "all",       label: "Tümü" },
     { value: "corporate", label: "Kurumsal" },
-    { value: "driver", label: "Şoför" },
-    { value: "admin", label: "Yönetici" },
+    { value: "driver",    label: "Şoför" },
+    { value: "admin",     label: "Yönetici" },
   ];
+
+  const roleLabel = (role: string) => {
+    if (role === "corporate") return "Kurumsal";
+    if (role === "driver")    return "Şoför";
+    if (role === "admin")     return "Yönetici";
+    return "Bireysel";
+  };
 
   return (
     <div className="space-y-6">
@@ -85,7 +126,7 @@ export default function AdminUsers() {
                 size="sm"
                 variant={roleFilter === f.value ? "default" : "outline"}
                 className="rounded-xl"
-                onClick={() => setRoleFilter(f.value)}
+                onClick={() => setRoleFilter(f.value as ListUsersRole | "all")}
               >
                 {f.label}
               </Button>
@@ -134,28 +175,20 @@ export default function AdminUsers() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="bg-white">
-                        {user.role === "corporate"
-                          ? "Kurumsal"
-                          : user.role === "driver"
-                          ? "Şoför"
-                          : user.role === "admin"
-                          ? "Yönetici"
-                          : "Bireysel"}
+                        {roleLabel(user.role)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge
                         variant="secondary"
                         className={`
-                          ${user.status === "active" ? "bg-green-100 text-green-700" : ""}
-                          ${user.status === "pending" ? "bg-amber-100 text-amber-700" : ""}
-                          ${user.status === "suspended" ? "bg-red-100 text-red-700" : ""}
+                          ${user.status === "active"    ? "bg-green-100 text-green-700"  : ""}
+                          ${user.status === "pending"   ? "bg-amber-100 text-amber-700"  : ""}
+                          ${user.status === "suspended" ? "bg-red-100   text-red-700"    : ""}
                         `}
                       >
-                        {user.status === "active"
-                          ? "Aktif"
-                          : user.status === "pending"
-                          ? "Onay Bekliyor"
+                        {user.status === "active"    ? "Aktif"
+                          : user.status === "pending" ? "Onay Bekliyor"
                           : "Askıya Alındı"}
                       </Badge>
                     </TableCell>
@@ -163,44 +196,13 @@ export default function AdminUsers() {
                       {new Date(user.createdAt).toLocaleDateString("tr-TR")}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {loadingId === user.id ? (
+                      {loadingId === user.id ? (
+                        <div className="flex justify-end pr-2">
                           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                        ) : (
-                          <>
-                            {user.status === "pending" && (
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                title="Onayla"
-                                onClick={() => handleStatusChange(user.id, "active")}
-                              >
-                                <CheckCircle2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {user.status === "active" && user.role !== "admin" && (
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                title="Askıya Al"
-                                onClick={() => handleStatusChange(user.id, "suspended")}
-                              >
-                                <Ban className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {user.status === "suspended" && (
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                title="Yeniden Aktifleştir"
-                                onClick={() => handleStatusChange(user.id, "active")}
-                              >
-                                <CheckCircle2 className="h-4 w-4" />
-                              </Button>
-                            )}
+                        </div>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
                             <Button
                               size="icon"
                               variant="ghost"
@@ -208,9 +210,50 @@ export default function AdminUsers() {
                             >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
-                          </>
-                        )}
-                      </div>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            {user.status === "pending" && (
+                              <DropdownMenuItem
+                                className="text-green-600 focus:text-green-600 gap-2"
+                                onClick={() => handleStatusChange(user.id, "active")}
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                                Onayla
+                              </DropdownMenuItem>
+                            )}
+                            {user.status === "active" && user.role !== "admin" && (
+                              <DropdownMenuItem
+                                className="text-orange-600 focus:text-orange-600 gap-2"
+                                onClick={() => handleStatusChange(user.id, "suspended")}
+                              >
+                                <Ban className="h-4 w-4" />
+                                Askıya Al
+                              </DropdownMenuItem>
+                            )}
+                            {user.status === "suspended" && (
+                              <DropdownMenuItem
+                                className="text-green-600 focus:text-green-600 gap-2"
+                                onClick={() => handleStatusChange(user.id, "active")}
+                              >
+                                <UserCheck className="h-4 w-4" />
+                                Yeniden Aktifleştir
+                              </DropdownMenuItem>
+                            )}
+                            {user.role !== "admin" && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive gap-2"
+                                  onClick={() => setConfirmDeleteId(user.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Kullanıcıyı Sil
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -219,6 +262,27 @@ export default function AdminUsers() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirm Dialog */}
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={open => !open && setConfirmDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Kullanıcıyı Sil</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu kullanıcıyı kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+            >
+              Evet, Sil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

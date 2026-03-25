@@ -168,4 +168,26 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
   );
 });
 
+router.delete("/users/:id", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = parseInt(raw, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  const [existing] = await db.select({ id: usersTable.id, role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  if (!existing) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (existing.role === "admin") {
+    res.status(403).json({ error: "Yönetici hesabı silinemez" });
+    return;
+  }
+
+  await db.delete(usersTable).where(eq(usersTable.id, id));
+  res.json({ success: true });
+});
+
 export default router;

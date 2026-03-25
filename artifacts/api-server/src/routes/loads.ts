@@ -211,4 +211,21 @@ router.patch("/loads/:id", optionalAuth, async (req: AuthRequest, res): Promise<
   res.json(UpdateLoadResponse.parse(mapLoad(load)));
 });
 
+router.delete("/loads/:id", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = parseInt(raw, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  const [deleted] = await db.delete(loadsTable).where(eq(loadsTable.id, id)).returning({ id: loadsTable.id });
+  if (!deleted) {
+    res.status(404).json({ error: "Load not found" });
+    return;
+  }
+
+  res.json({ success: true });
+});
+
 export default router;
