@@ -64,16 +64,28 @@ export default function CorporateOffers() {
   const { mutate: acceptOfferMutate } = useAcceptOffer();
   const { mutate: rejectOfferMutate } = useRejectOffer();
 
-  const rawOffers = (data?.offers?.length ? data.offers : MOCK_OFFERS) as typeof MOCK_OFFERS;
+  const rawOffers = (data?.offers?.length ? data.offers : MOCK_OFFERS) as any[];
   const offers = rawOffers.map(o => ({
     ...o,
-    status: localStatuses[o.id] ?? (o.status as OfferStatus),
+    driverName: o.driver?.name ?? o.driverName ?? "—",
+    loadTitle: o.load?.title ?? o.loadTitle ?? "—",
+    driverRating: o.driver?.rating ?? o.driverRating ?? 0,
+    driverShipments: o.driver?.totalShipments ?? o.driverShipments ?? 0,
+    driverPhone: o.driver?.phone ?? o.driverPhone ?? "",
+    vehicleType: o.driver?.vehicleTypes?.split(",")[0]?.trim() ?? o.vehicleType ?? "—",
+    vehiclePlate: o.vehiclePlate ?? "—",
+    createdAt: o.createdAt
+      ? (typeof o.createdAt === "string" && /^\d{4}/.test(o.createdAt)
+          ? new Date(o.createdAt).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+          : o.createdAt)
+      : "—",
+    status: (localStatuses[o.id] ?? o.status) as OfferStatus,
   }));
 
   const filtered = offers.filter(o => {
     const matchSearch = !search ||
-      o.loadTitle.toLowerCase().includes(search.toLowerCase()) ||
-      o.driverName.toLowerCase().includes(search.toLowerCase());
+      (o.loadTitle ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (o.driverName ?? "").toLowerCase().includes(search.toLowerCase());
     const matchFilter = filter === "all" || o.status === filter;
     return matchSearch && matchFilter;
   });
