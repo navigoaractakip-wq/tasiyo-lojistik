@@ -256,11 +256,6 @@ export default function Login() {
                       className="h-11 text-base"
                       autoFocus
                     />
-                    {selectedRole === "admin" && (
-                      <p className="text-xs text-blue-600 font-medium">
-                        Demo admin: ahmet@logistikco.com
-                      </p>
-                    )}
                   </div>
 
                   <Button
