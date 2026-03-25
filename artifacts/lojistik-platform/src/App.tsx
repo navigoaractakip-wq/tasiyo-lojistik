@@ -78,6 +78,7 @@ function Router() {
       {/* Auth */}
       <Route path="/giris" component={Login} />
       <Route path="/admin-giris" component={AdminLogin} />
+      <Route path="/admingiris"><Redirect to="/admin-giris" /></Route>
       <Route path="/kayit" component={Register} />
 
       {/* Root redirect */}
