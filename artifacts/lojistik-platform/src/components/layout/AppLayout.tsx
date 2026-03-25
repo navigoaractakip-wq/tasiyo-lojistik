@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Package, Truck, Users, 
   MessageSquare, Settings, Bell, LogOut, 
   Menu, X, ShieldAlert, BarChart3, Map,
-  Search, FileText
+  Search, FileText, ScrollText
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -91,6 +91,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     { href: "/admin/loads", label: "İlan Yönetimi", icon: Package },
     { href: "/admin/users", label: "Kullanıcılar", icon: Users },
     { href: "/admin/stats", label: "Raporlar", icon: BarChart3 },
+    { href: "/admin/sozlesmeler", label: "Sözleşmeler", icon: ScrollText },
     { href: "/admin/system", label: "Sistem", icon: ShieldAlert },
     { href: "/admin/settings", label: "Ayarlar", icon: Settings },
   ] : [

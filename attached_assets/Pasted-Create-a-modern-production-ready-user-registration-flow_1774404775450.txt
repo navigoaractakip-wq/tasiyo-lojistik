@@ -1,0 +1,106 @@
+Create a modern, production-ready user registration flow for a subscription-based web/mobile application.
+
+The registration form must include mandatory and optional agreement checkboxes compliant with Turkish regulations (KVKK and Electronic Commerce Law).
+
+### UI REQUIREMENTS
+
+Design a clean and modern registration screen with the following fields:
+
+* Full Name
+* Email
+* Password
+
+Below the form, add agreement checkboxes:
+
+#### Mandatory Checkboxes (cannot proceed without checking)
+
+1. "I have read and agree to the Terms of Service"
+
+   * clickable link opens modal/popup showing the full contract
+
+2. "I have read the Privacy Policy and KVKK Information Notice"
+
+   * clickable link opens modal/popup
+
+#### Conditional Mandatory (if subscription/payment exists)
+
+3. "I have read and accept the Distance Sales Agreement and Pre-Information Form"
+
+#### Optional Checkboxes (must NOT be pre-selected)
+
+4. "I agree to receive commercial electronic messages (email/SMS)"
+5. "I consent to the processing of my location data" (if location tracking is used)
+
+### UX RULES
+
+* Users must not be able to register unless all required checkboxes are selected
+* Each document must open in a modal (not redirect)
+* Provide a "read more" expandable preview inside modal
+* Show validation errors clearly under checkboxes
+* Keep checkbox texts short and readable
+* Mobile responsive design required
+
+### BACKEND REQUIREMENTS
+
+When the user registers:
+
+* Store checkbox consents as boolean fields:
+
+  * termsAccepted
+  * privacyAccepted
+  * distanceSalesAccepted
+  * marketingConsent
+  * locationConsent
+
+* Also log:
+
+  * timestamp of consent
+  * user IP address
+  * version of each agreement (important for legal tracking)
+
+### DATABASE SCHEMA (example)
+
+users table:
+
+* id
+* name
+* email
+* password_hash
+* created_at
+
+user_consents table:
+
+* id
+* user_id
+* terms_accepted (boolean)
+* privacy_accepted (boolean)
+* distance_sales_accepted (boolean)
+* marketing_consent (boolean)
+* location_consent (boolean)
+* ip_address
+* consent_timestamp
+* terms_version
+* privacy_version
+
+### EXTRA REQUIREMENTS
+
+* Prevent pre-checked checkboxes
+* Make consent logging immutable (cannot be altered later)
+* Ensure GDPR/KVKK-style compliance structure
+* Code should be modular and scalable
+
+### TECH STACK (preferred but flexible)
+
+* Frontend: React / Next.js
+* Backend: Node.js (Express or NestJS)
+* Database: PostgreSQL
+
+Generate:
+
+1. Frontend form component
+2. Modal components for agreements
+3. Backend API endpoint for registration
+4. Database schema
+5. Validation logic
+
+Make the code clean, commented, and production-ready.

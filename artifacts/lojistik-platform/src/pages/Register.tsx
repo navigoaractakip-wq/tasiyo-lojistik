@@ -1,18 +1,82 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRegister } from "@workspace/api-client-react";
+import { useRegister, useGetContracts, type Contract } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
+import {
   ShieldCheck, Building2, Truck, ArrowLeft, ArrowRight,
-  CheckCircle2, User, Mail, Phone, Briefcase, Loader2,
+  CheckCircle2, User, Mail, Phone, Briefcase, Loader2, X,
+  AlertCircle,
 } from "lucide-react";
 
 type Role = "corporate" | "driver";
 type Step = "role" | "info" | "verify";
+
+interface ConsentState {
+  termsAccepted: boolean;
+  privacyAccepted: boolean;
+  distanceSalesAccepted: boolean;
+  marketingConsent: boolean;
+  locationConsent: boolean;
+}
+
+interface ConsentErrors {
+  termsAccepted?: string;
+  privacyAccepted?: string;
+  distanceSalesAccepted?: string;
+}
+
+function ContractModal({
+  contract,
+  open,
+  onClose,
+}: {
+  contract: Contract | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <DialogTitle className="text-base font-bold text-gray-900">
+                {contract?.title ?? "Sözleşme"}
+              </DialogTitle>
+              <DialogDescription className="text-xs mt-0.5 text-muted-foreground">
+                Sürüm {contract?.version ?? 1} — Son güncelleme:{" "}
+                {contract?.updatedAt
+                  ? new Date(contract.updatedAt).toLocaleDateString("tr-TR")
+                  : "—"}
+              </DialogDescription>
+            </div>
+            <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </DialogHeader>
+        <div className="overflow-y-auto flex-1 px-6 py-4">
+          <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
+            {contract?.content ?? "İçerik yükleniyor..."}
+          </pre>
+        </div>
+        <div className="px-6 py-4 border-t flex-shrink-0">
+          <Button onClick={onClose} className="w-full" size="sm">
+            Kapat
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function Register() {
   const [, setLocation] = useLocation();
@@ -28,13 +92,50 @@ export default function Register() {
   const [registrationMessage, setRegistrationMessage] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
 
+  const [consents, setConsents] = useState<ConsentState>({
+    termsAccepted: false,
+    privacyAccepted: false,
+    distanceSalesAccepted: false,
+    marketingConsent: false,
+    locationConsent: false,
+  });
+  const [consentErrors, setConsentErrors] = useState<ConsentErrors>({});
+
+  const [modalContract, setModalContract] = useState<Contract | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
   const { mutate: register, isPending } = useRegister();
+  const { data: contractsData } = useGetContracts();
+  const contracts = contractsData?.contracts ?? [];
+
+  const getContract = (key: string) => contracts.find((c) => c.key === key) ?? null;
+
+  const openModal = (key: string) => {
+    const c = getContract(key);
+    setModalContract(c);
+    setModalOpen(true);
+  };
 
   const stepIndex = step === "role" ? 0 : step === "info" ? 1 : 2;
 
   const handleRoleSelect = (r: Role) => {
     setRole(r);
     setStep("info");
+  };
+
+  const validateConsents = (): boolean => {
+    const errors: ConsentErrors = {};
+    if (!consents.termsAccepted) {
+      errors.termsAccepted = "Kullanım koşullarını kabul etmelisiniz.";
+    }
+    if (!consents.privacyAccepted) {
+      errors.privacyAccepted = "Gizlilik politikası ve KVKK aydınlatma metnini onaylamalısınız.";
+    }
+    if (role === "corporate" && !consents.distanceSalesAccepted) {
+      errors.distanceSalesAccepted = "Mesafeli satış sözleşmesini kabul etmelisiniz.";
+    }
+    setConsentErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleInfoSubmit = (e: React.FormEvent) => {
@@ -47,6 +148,7 @@ export default function Register() {
       toast({ title: "Hata", description: "Şirket adı zorunludur.", variant: "destructive" });
       return;
     }
+    if (!validateConsents()) return;
 
     register(
       {
@@ -56,6 +158,11 @@ export default function Register() {
           phone: form.phone.trim() || undefined,
           role: role!,
           company: form.company.trim() || undefined,
+          termsAccepted: consents.termsAccepted,
+          privacyAccepted: consents.privacyAccepted,
+          distanceSalesAccepted: consents.distanceSalesAccepted,
+          marketingConsent: consents.marketingConsent,
+          locationConsent: consents.locationConsent,
         },
       },
       {
@@ -130,17 +237,72 @@ export default function Register() {
     exit: { opacity: 0, x: -20 },
   };
 
+  const ConsentCheckbox = ({
+    id,
+    checked,
+    onChange,
+    error,
+    label,
+    contractKey,
+    required,
+  }: {
+    id: keyof ConsentState;
+    checked: boolean;
+    onChange: (v: boolean) => void;
+    error?: string;
+    label: React.ReactNode;
+    contractKey: string;
+    required?: boolean;
+  }) => (
+    <div className="space-y-1">
+      <div className="flex items-start gap-2.5">
+        <Checkbox
+          id={id}
+          checked={checked}
+          onCheckedChange={(v) => {
+            onChange(!!v);
+            if (v && error) {
+              setConsentErrors((prev) => ({ ...prev, [id]: undefined }));
+            }
+          }}
+          className={`mt-0.5 flex-shrink-0 ${error ? "border-red-500" : ""}`}
+        />
+        <label htmlFor={id} className="text-xs text-gray-600 leading-relaxed cursor-pointer">
+          {label}{" "}
+          <button
+            type="button"
+            onClick={() => openModal(contractKey)}
+            className="text-blue-600 hover:text-blue-700 underline underline-offset-2 font-medium"
+          >
+            Metni oku
+          </button>
+          {required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+      </div>
+      {error && (
+        <div className="flex items-center gap-1.5 text-xs text-red-600 ml-7">
+          <AlertCircle className="w-3 h-3 flex-shrink-0" />
+          {error}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#1a2744] flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Background blobs */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-800/10 rounded-full blur-3xl" />
       </div>
 
+      <ContractModal
+        contract={modalContract}
+        open={modalOpen}
+        onClose={() => { setModalOpen(false); setModalContract(null); }}
+      />
+
       <div className="relative z-10 w-full max-w-lg">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-2xl shadow-blue-600/40">
             <Truck className="w-8 h-8 text-white" />
@@ -149,7 +311,6 @@ export default function Register() {
           <p className="text-blue-200/70 text-sm mt-1">Lojistik Platformu</p>
         </div>
 
-        {/* Progress steps */}
         <div className="flex items-center justify-center gap-2 mb-8">
           {["Rol", "Bilgiler", "Doğrulama"].map((label, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -170,11 +331,10 @@ export default function Register() {
           ))}
         </div>
 
-        {/* Card */}
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
           <AnimatePresence mode="wait">
 
-            {/* ── Step 1: Role Selection ── */}
+            {/* ── Step 1: Role ── */}
             {step === "role" && (
               <motion.div key="role" {...pageVariants} transition={{ duration: 0.2 }} className="p-8">
                 <h2 className="text-xl font-bold text-gray-900 mb-1">Hesap Türü Seçin</h2>
@@ -222,7 +382,7 @@ export default function Register() {
               </motion.div>
             )}
 
-            {/* ── Step 2: Personal Info ── */}
+            {/* ── Step 2: Info + Consents ── */}
             {step === "info" && (
               <motion.div key="info" {...pageVariants} transition={{ duration: 0.2 }} className="p-8">
                 <button
@@ -250,6 +410,7 @@ export default function Register() {
                 </div>
 
                 <form onSubmit={handleInfoSubmit} className="space-y-4">
+                  {/* Name */}
                   <div className="space-y-1.5">
                     <Label htmlFor="name" className="text-sm font-medium text-gray-700">
                       Ad Soyad <span className="text-red-500">*</span>
@@ -267,6 +428,7 @@ export default function Register() {
                     </div>
                   </div>
 
+                  {/* Email */}
                   <div className="space-y-1.5">
                     <Label htmlFor="email" className="text-sm font-medium text-gray-700">
                       E-posta Adresi <span className="text-red-500">*</span>
@@ -285,6 +447,7 @@ export default function Register() {
                     </div>
                   </div>
 
+                  {/* Phone */}
                   <div className="space-y-1.5">
                     <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
                       Telefon Numarası <span className="text-gray-400 font-normal">(opsiyonel)</span>
@@ -302,6 +465,7 @@ export default function Register() {
                     </div>
                   </div>
 
+                  {/* Company — only for corporate */}
                   {role === "corporate" && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
@@ -324,6 +488,111 @@ export default function Register() {
                       </div>
                     </motion.div>
                   )}
+
+                  {/* ── Consent Section ── */}
+                  <div className="pt-2">
+                    <div className="border-t pt-4 space-y-3">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                          KVKK Uyumlu Onaylar
+                        </p>
+                      </div>
+
+                      {/* Terms — ZORUNLU */}
+                      <ConsentCheckbox
+                        id="termsAccepted"
+                        checked={consents.termsAccepted}
+                        onChange={(v) => setConsents((s) => ({ ...s, termsAccepted: v }))}
+                        error={consentErrors.termsAccepted}
+                        contractKey="terms"
+                        required
+                        label={
+                          <span>
+                            <strong>Kullanım Koşulları</strong>'nı okudum ve kabul ediyorum.
+                          </span>
+                        }
+                      />
+
+                      {/* Privacy / KVKK — ZORUNLU */}
+                      <ConsentCheckbox
+                        id="privacyAccepted"
+                        checked={consents.privacyAccepted}
+                        onChange={(v) => setConsents((s) => ({ ...s, privacyAccepted: v }))}
+                        error={consentErrors.privacyAccepted}
+                        contractKey="privacy"
+                        required
+                        label={
+                          <span>
+                            <strong>Gizlilik Politikası ve KVKK Aydınlatma Metni</strong>'ni okudum, kişisel verilerimin işlenmesini onaylıyorum.
+                          </span>
+                        }
+                      />
+
+                      {/* Distance Sales — Kurumsal için ZORUNLU */}
+                      {role === "corporate" && (
+                        <ConsentCheckbox
+                          id="distanceSalesAccepted"
+                          checked={consents.distanceSalesAccepted}
+                          onChange={(v) => setConsents((s) => ({ ...s, distanceSalesAccepted: v }))}
+                          error={consentErrors.distanceSalesAccepted}
+                          contractKey="distance_sales"
+                          required
+                          label={
+                            <span>
+                              <strong>Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme Formu</strong>'nu okudum ve kabul ediyorum.
+                            </span>
+                          }
+                        />
+                      )}
+
+                      {/* Marketing — İSTEĞE BAĞLI */}
+                      <div className="flex items-start gap-2.5">
+                        <Checkbox
+                          id="marketingConsent"
+                          checked={consents.marketingConsent}
+                          onCheckedChange={(v) =>
+                            setConsents((s) => ({ ...s, marketingConsent: !!v }))
+                          }
+                          className="mt-0.5 flex-shrink-0"
+                        />
+                        <label htmlFor="marketingConsent" className="text-xs text-gray-500 leading-relaxed cursor-pointer">
+                          E-posta, SMS ve bildirim yoluyla ticari elektronik ileti almayı kabul ediyorum.{" "}
+                          <button
+                            type="button"
+                            onClick={() => openModal("marketing")}
+                            className="text-blue-600 hover:text-blue-700 underline underline-offset-2 font-medium"
+                          >
+                            Metni oku
+                          </button>
+                          <span className="text-gray-400 ml-1">(isteğe bağlı)</span>
+                        </label>
+                      </div>
+
+                      {/* Location — İSTEĞE BAĞLI */}
+                      <div className="flex items-start gap-2.5">
+                        <Checkbox
+                          id="locationConsent"
+                          checked={consents.locationConsent}
+                          onCheckedChange={(v) =>
+                            setConsents((s) => ({ ...s, locationConsent: !!v }))
+                          }
+                          className="mt-0.5 flex-shrink-0"
+                        />
+                        <label htmlFor="locationConsent" className="text-xs text-gray-500 leading-relaxed cursor-pointer">
+                          Konum verilerimin lojistik hizmet amacıyla işlenmesine izin veriyorum.{" "}
+                          <button
+                            type="button"
+                            onClick={() => openModal("location")}
+                            className="text-blue-600 hover:text-blue-700 underline underline-offset-2 font-medium"
+                          >
+                            Metni oku
+                          </button>
+                          <span className="text-gray-400 ml-1">(isteğe bağlı)</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
 
                   <Button
                     type="submit"
@@ -419,7 +688,6 @@ export default function Register() {
           </AnimatePresence>
         </div>
 
-        {/* Süper yönetici notu */}
         <p className="text-center text-xs text-blue-200/50 mt-6">
           Süper yönetici hesabı için yöneticinizle iletişime geçin.
         </p>

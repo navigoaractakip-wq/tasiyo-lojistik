@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { randomInt } from "crypto";
-import { db, otpCodesTable, userSessionsTable, usersTable, platformSettingsTable } from "@workspace/db";
+import { db, otpCodesTable, userSessionsTable, usersTable, platformSettingsTable, userConsentsTable, contractsTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { sendSms, sendEmail } from "../lib/notifier";
@@ -53,7 +53,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
-  const { name, email, phone, role, company } = parsed.data;
+  const { name, email, phone, role, company, termsAccepted, privacyAccepted, distanceSalesAccepted, marketingConsent, locationConsent } = parsed.data;
 
   // Check if email already exists
   const existing = await db
@@ -80,6 +80,35 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .returning();
 
   console.log(`[REGISTER] Yeni kullanıcı oluşturuldu: ${newUser.name} (${newUser.email}) - Rol: ${newUser.role}`);
+
+  // Get current contract versions for logging
+  const contractVersions: Record<string, number> = {};
+  const contracts = await db.select({ key: contractsTable.key, version: contractsTable.version }).from(contractsTable);
+  for (const c of contracts) {
+    contractVersions[c.key] = c.version;
+  }
+
+  // Save consents
+  const ipAddress =
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+    req.socket.remoteAddress ||
+    null;
+
+  await db.insert(userConsentsTable).values({
+    userId: newUser.id,
+    termsAccepted: termsAccepted ?? false,
+    privacyAccepted: privacyAccepted ?? false,
+    distanceSalesAccepted: distanceSalesAccepted ?? false,
+    marketingConsent: marketingConsent ?? false,
+    locationConsent: locationConsent ?? false,
+    ipAddress,
+    consentTimestamp: new Date(),
+    termsVersion: contractVersions["terms"] ?? 1,
+    privacyVersion: contractVersions["privacy"] ?? 1,
+    distanceSalesVersion: contractVersions["distance_sales"] ?? 1,
+  });
+
+  console.log(`[CONSENT] Kullanıcı ${newUser.id} onayları kaydedildi — IP: ${ipAddress}`);
 
   // Auto-send OTP
   const identifier = phone?.trim() || email.toLowerCase().trim();

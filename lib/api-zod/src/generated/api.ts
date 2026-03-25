@@ -159,6 +159,11 @@ export const RegisterBody = zod.object({
   phone: zod.string().optional(),
   role: zod.enum(["corporate", "driver"]),
   company: zod.string().optional(),
+  termsAccepted: zod.boolean().refine((v) => v === true, { message: "Kullanım koşullarını kabul etmelisiniz." }),
+  privacyAccepted: zod.boolean().refine((v) => v === true, { message: "Gizlilik politikasını kabul etmelisiniz." }),
+  distanceSalesAccepted: zod.boolean().optional(),
+  marketingConsent: zod.boolean().optional(),
+  locationConsent: zod.boolean().optional(),
 });
 
 export const RegisterResponse = zod.object({

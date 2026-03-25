@@ -20,6 +20,7 @@ import AdminLoads from "@/pages/admin/AdminLoads";
 import AdminStats from "@/pages/admin/AdminStats";
 import AdminSystem from "@/pages/admin/AdminSystem";
 import AdminSettings from "@/pages/admin/AdminSettings";
+import AdminContracts from "@/pages/admin/AdminContracts";
 
 // Corporate
 import CorporateDashboard from "@/pages/corporate/CorporateDashboard";
@@ -121,6 +122,11 @@ function Router() {
       <Route path="/admin/settings">
         <ProtectedRoute allowedRoles={["admin"]}>
           <AppLayout><AdminSettings /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/sozlesmeler">
+        <ProtectedRoute allowedRoles={["admin"]}>
+          <AppLayout><AdminContracts /></AppLayout>
         </ProtectedRoute>
       </Route>
 

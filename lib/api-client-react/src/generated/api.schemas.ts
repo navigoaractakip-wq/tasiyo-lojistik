@@ -545,6 +545,11 @@ export interface RegisterRequest {
   phone?: string;
   role: RegisterRequestRole;
   company?: string;
+  termsAccepted: boolean;
+  privacyAccepted: boolean;
+  distanceSalesAccepted?: boolean;
+  marketingConsent?: boolean;
+  locationConsent?: boolean;
 }
 
 export interface RegisterResponse {
