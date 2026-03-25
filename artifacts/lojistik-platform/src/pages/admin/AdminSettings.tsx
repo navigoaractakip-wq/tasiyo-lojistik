@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   useGetSettings,
   useUpdateSettings,
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   MessageSquare,
   Mail,
@@ -24,6 +25,7 @@ import {
   CheckCircle2,
   XCircle,
   Info,
+  Camera,
 } from "lucide-react";
 
 type SettingRow = {
@@ -96,6 +98,50 @@ function SecretInput({
       >
         {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
       </Button>
+    </div>
+  );
+}
+
+function LogoUploadField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Dosya çok büyük", description: "Logo en fazla 2 MB olabilir.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => onChange(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="flex items-center gap-4">
+      <Avatar className="h-16 w-16 border-2 border-border rounded-xl">
+        <AvatarImage src={value} className="object-contain" />
+        <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold rounded-xl">LOGO</AvatarFallback>
+      </Avatar>
+      <div className="space-y-1">
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => fileRef.current?.click()}>
+          <Camera className="w-4 h-4" /> Logo Seç
+        </Button>
+        {value && (
+          <Button variant="ghost" size="sm" className="block text-destructive hover:text-destructive" onClick={() => { onChange(""); if (fileRef.current) fileRef.current.value = ""; }}>
+            Kaldır
+          </Button>
+        )}
+        <p className="text-xs text-muted-foreground">PNG/JPG, maks. 2 MB</p>
+      </div>
+      <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleFile} />
     </div>
   );
 }
@@ -253,7 +299,12 @@ export default function AdminSettings() {
                   {setting.description && (
                     <p className="text-xs text-muted-foreground">{setting.description}</p>
                   )}
-                  {setting.isSecret ? (
+                  {setting.key === "platform_logo" ? (
+                    <LogoUploadField
+                      value={values[setting.key] ?? ""}
+                      onChange={(v) => handleChange(setting.key, v)}
+                    />
+                  ) : setting.isSecret ? (
                     <SecretInput
                       value={values[setting.key] ?? ""}
                       onChange={(v) => handleChange(setting.key, v)}

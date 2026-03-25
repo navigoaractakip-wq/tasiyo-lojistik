@@ -28,7 +28,8 @@ const DEFAULT_SETTINGS = [
   { key: "smtp_from",  label: "Gönderen Adres",    description: 'Örn: "TaşıYo <no-reply@tasiyo.com>"', group: "email", isSecret: false },
 
   // Platform
-  { key: "platform_name",    label: "Platform Adı",    description: "Platformun görünen adı",          group: "platform", isSecret: false },
+  { key: "platform_name",    label: "Platform Adı",    description: "Platformun görünen adı (varsayılan: TaşıYo)",          group: "platform", isSecret: false },
+  { key: "platform_logo",    label: "Platform Logosu", description: "Sol üst köşede görünen platform logosu (base64 resim)", group: "platform", isSecret: false },
   { key: "platform_support_email", label: "Destek E-posta",  description: "Kullanıcıların ulaşacağı destek adresi", group: "platform", isSecret: false },
   { key: "otp_expiry_minutes",     label: "OTP Süresi (dk)", description: "Doğrulama kodunun geçerlilik süresi",   group: "platform", isSecret: false },
   { key: "max_otp_attempts",       label: "Maks. OTP Deneme", description: "Başarısız giriş denemesi limiti",     group: "platform", isSecret: false },
@@ -64,6 +65,24 @@ function mapSetting(s: typeof platformSettingsTable.$inferSelect) {
     updatedAt: s.updatedAt,
   };
 }
+
+// Public endpoint — no auth required, returns only non-secret platform branding
+router.get("/settings/public", async (req, res): Promise<void> => {
+  await ensureDefaultSettings();
+  const rows = await db
+    .select()
+    .from(platformSettingsTable)
+    .orderBy(platformSettingsTable.key);
+
+  const publicKeys = ["platform_name", "platform_logo"];
+  const result: Record<string, string | null> = {};
+  for (const row of rows) {
+    if (publicKeys.includes(row.key)) {
+      result[row.key] = row.value ?? null;
+    }
+  }
+  res.json(result);
+});
 
 router.get("/settings", async (req, res): Promise<void> => {
   await ensureDefaultSettings();

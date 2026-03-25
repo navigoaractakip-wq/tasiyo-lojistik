@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
+import { usePlatformBranding } from "@/lib/platform-context";
 import { 
   LayoutDashboard, Package, Truck, Users, 
   MessageSquare, Settings, Bell, LogOut, 
@@ -21,6 +22,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { role, logout, user } = useAuth();
+  const branding = usePlatformBranding();
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -105,18 +107,12 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 bg-sidebar text-sidebar-foreground border-b border-sidebar-border sticky top-0 z-50">
         <div className="flex items-center gap-2">
-          {role === "corporate" && user?.avatarUrl ? (
-            <img
-              src={user.avatarUrl}
-              alt="Şirket Logosu"
-              className="h-8 w-8 object-contain rounded-md bg-white/15 p-0.5"
-            />
+          {branding.logo ? (
+            <img src={branding.logo} alt="Logo" className="h-8 w-8 object-contain rounded-md bg-white/15 p-0.5" />
           ) : (
             <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-8 w-8 brightness-0 invert" />
           )}
-          <span className="font-display font-bold text-xl">
-            {role === "corporate" && user?.company ? user.company : "TaşıYo"}
-          </span>
+          <span className="font-display font-bold text-xl">{branding.name}</span>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-white">
           {isMobileMenuOpen ? <X /> : <Menu />}
@@ -130,19 +126,13 @@ export function AppLayout({ children }: AppLayoutProps) {
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <div className="p-6 hidden md:flex items-center gap-3">
-          {role === "corporate" && user?.avatarUrl ? (
-            <img
-              src={user.avatarUrl}
-              alt="Şirket Logosu"
-              className="h-10 w-10 object-contain rounded-lg bg-white/15 p-0.5"
-            />
+          {branding.logo ? (
+            <img src={branding.logo} alt="Logo" className="h-10 w-10 object-contain rounded-lg bg-white/15 p-0.5" />
           ) : (
             <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-10 w-10 brightness-0 invert" />
           )}
           <div>
-            <h1 className="font-display font-bold text-2xl tracking-tight text-white leading-none">
-              {role === "corporate" && user?.company ? user.company : "TaşıYo"}
-            </h1>
+            <h1 className="font-display font-bold text-2xl tracking-tight text-white leading-none">{branding.name}</h1>
             <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-widest font-semibold">Lojistik Platformu</span>
           </div>
         </div>
