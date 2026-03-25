@@ -1,6 +1,21 @@
 import { Router, type IRouter } from "express";
-import { db, contractsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import type { Request } from "express";
+import { db, contractsTable, userConsentsTable, userSessionsTable, usersTable } from "@workspace/db";
+import { eq, and, gt } from "drizzle-orm";
+
+async function requireAdmin(req: Request): Promise<{ id: number; role: string } | null> {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  if (!token) return null;
+  const now = new Date();
+  const [session] = await db
+    .select()
+    .from(userSessionsTable)
+    .where(and(eq(userSessionsTable.token, token), gt(userSessionsTable.expiresAt, now)));
+  if (!session) return null;
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, session.userId));
+  if (!user || user.role !== "admin") return null;
+  return { id: user.id, role: user.role };
+}
 
 const router: IRouter = Router();
 
@@ -204,6 +219,27 @@ router.get("/contracts", async (_req, res): Promise<void> => {
   res.json({ success: true, contracts: rows });
 });
 
+router.get("/contracts/stats", async (req, res): Promise<void> => {
+  const admin = await requireAdmin(req);
+  if (!admin) {
+    res.status(403).json({ success: false, message: "Yetkisiz erişim." });
+    return;
+  }
+  const rows = await db.select().from(userConsentsTable);
+  const total = rows.length;
+  res.json({
+    success: true,
+    stats: {
+      terms: rows.filter((r) => r.termsAccepted).length,
+      privacy: rows.filter((r) => r.privacyAccepted).length,
+      distance_sales: rows.filter((r) => r.distanceSalesAccepted).length,
+      marketing: rows.filter((r) => r.marketingConsent).length,
+      location: rows.filter((r) => r.locationConsent).length,
+      total,
+    },
+  });
+});
+
 router.get("/contracts/:key", async (req, res): Promise<void> => {
   const { key } = req.params;
   const [row] = await db.select().from(contractsTable).where(eq(contractsTable.key, key));
@@ -215,8 +251,8 @@ router.get("/contracts/:key", async (req, res): Promise<void> => {
 });
 
 router.put("/contracts/:key", async (req, res): Promise<void> => {
-  const user = (req as unknown as { user?: { role?: string } }).user;
-  if (!user || user.role !== "admin") {
+  const admin = await requireAdmin(req);
+  if (!admin) {
     res.status(403).json({ success: false, message: "Yetkisiz erişim." });
     return;
   }
