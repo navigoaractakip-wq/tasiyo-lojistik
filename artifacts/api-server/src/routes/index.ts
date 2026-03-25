@@ -11,6 +11,7 @@ import adminRouter from "./admin";
 import messagesRouter from "./messages";
 import settingsRouter from "./settings";
 import contractsRouter from "./contracts";
+import supportRouter from "./support";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(adminRouter);
 router.use(messagesRouter);
 router.use(settingsRouter);
 router.use(contractsRouter);
+router.use(supportRouter);
 
 export default router;

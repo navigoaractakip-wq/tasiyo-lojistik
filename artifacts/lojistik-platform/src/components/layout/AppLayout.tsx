@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Package, Truck, Users, 
   MessageSquare, Settings, Bell, LogOut, 
   Menu, X, ShieldAlert, BarChart3, Map,
-  Search, FileText, ScrollText
+  Search, FileText, ScrollText, HeadphonesIcon
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,12 @@ export function AppLayout({ children }: AppLayoutProps) {
               <span className="font-display font-bold text-lg text-primary">TaşıYo</span>
             </div>
             <div className="flex items-center gap-3">
+              <Link href="/driver/destek">
+                <Button variant="ghost" size="sm" className="text-xs text-gray-600 gap-1 px-2">
+                  <HeadphonesIcon className="h-4 w-4" />
+                  Destek
+                </Button>
+              </Link>
               <Button variant="ghost" size="icon" className="relative rounded-full">
                 <Bell className="h-5 w-5 text-gray-600" />
                 <span className="absolute top-1 right-1 h-2 w-2 bg-accent rounded-full border-2 border-white"></span>
@@ -91,6 +97,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     { href: "/admin/loads", label: "İlan Yönetimi", icon: Package },
     { href: "/admin/users", label: "Kullanıcılar", icon: Users },
     { href: "/admin/stats", label: "Raporlar", icon: BarChart3 },
+    { href: "/admin/destek", label: "Destek Talepleri", icon: HeadphonesIcon },
     { href: "/admin/sozlesmeler", label: "Sözleşmeler", icon: ScrollText },
     { href: "/admin/system", label: "Sistem", icon: ShieldAlert },
     { href: "/admin/settings", label: "Ayarlar", icon: Settings },
@@ -100,8 +107,11 @@ export function AppLayout({ children }: AppLayoutProps) {
     { href: "/dashboard/offers", label: "Teklifler", icon: MessageSquare },
     { href: "/dashboard/tracking", label: "Canlı Takip", icon: Truck },
     { href: "/dashboard/team", label: "Ekibim", icon: Users },
+    { href: "/dashboard/destek", label: "Destek", icon: HeadphonesIcon },
     { href: "/dashboard/settings", label: "Ayarlar", icon: Settings },
   ];
+
+  const supportHref = role === "admin" ? "/admin/destek" : "/dashboard/destek";
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row font-sans">
@@ -205,10 +215,12 @@ export function AppLayout({ children }: AppLayoutProps) {
             </h2>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" className="hidden lg:flex border-border bg-background shadow-sm hover:border-primary/50">
-              <MessageSquare className="h-4 w-4 mr-2 text-primary" />
-              Destek
-            </Button>
+            <Link href={supportHref}>
+              <Button variant="outline" className="hidden lg:flex border-border bg-background shadow-sm hover:border-primary/50">
+                <HeadphonesIcon className="h-4 w-4 mr-2 text-primary" />
+                Destek
+              </Button>
+            </Link>
             <Button variant="outline" size="icon" className="relative rounded-full border-border bg-background shadow-sm hover:border-primary/50">
               <Bell className="h-5 w-5 text-foreground/80" />
               <span className="absolute top-0 right-0 h-2.5 w-2.5 bg-accent rounded-full border-2 border-background"></span>

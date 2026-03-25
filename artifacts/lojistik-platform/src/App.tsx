@@ -21,6 +21,10 @@ import AdminStats from "@/pages/admin/AdminStats";
 import AdminSystem from "@/pages/admin/AdminSystem";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminContracts from "@/pages/admin/AdminContracts";
+import AdminSupport from "@/pages/admin/AdminSupport";
+
+// Support
+import SupportPage from "@/pages/SupportPage";
 
 // Corporate
 import CorporateDashboard from "@/pages/corporate/CorporateDashboard";
@@ -130,6 +134,11 @@ function Router() {
           <AppLayout><AdminContracts /></AppLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/admin/destek">
+        <ProtectedRoute allowedRoles={["admin"]}>
+          <AppLayout><AdminSupport /></AppLayout>
+        </ProtectedRoute>
+      </Route>
 
       {/* ── Corporate Routes ── */}
       <Route path="/dashboard">
@@ -167,6 +176,11 @@ function Router() {
           <AppLayout><CorporateSettings /></AppLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/dashboard/destek">
+        <ProtectedRoute allowedRoles={["corporate"]}>
+          <AppLayout><SupportPage /></AppLayout>
+        </ProtectedRoute>
+      </Route>
 
       {/* ── Driver Routes ── */}
       <Route path="/driver">
@@ -192,6 +206,11 @@ function Router() {
       <Route path="/driver/offers">
         <ProtectedRoute allowedRoles={["driver"]}>
           <AppLayout><DriverOffers /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/driver/destek">
+        <ProtectedRoute allowedRoles={["driver"]}>
+          <AppLayout><SupportPage /></AppLayout>
         </ProtectedRoute>
       </Route>
 
