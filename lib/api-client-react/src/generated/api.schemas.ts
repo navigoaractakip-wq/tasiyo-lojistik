@@ -35,6 +35,11 @@ export interface User {
   status: UserStatus;
   company?: string;
   avatarUrl?: string;
+  website?: string;
+  address?: string;
+  taxNumber?: string;
+  vehicleTypes?: string;
+  notificationSettings?: string;
   rating?: number;
   totalShipments?: number;
   createdAt: string;
@@ -79,6 +84,12 @@ export interface UpdateUserRequest {
   phone?: string;
   status?: UpdateUserRequestStatus;
   company?: string;
+  avatarUrl?: string;
+  website?: string;
+  address?: string;
+  taxNumber?: string;
+  vehicleTypes?: string;
+  notificationSettings?: string;
 }
 
 export type LoadPricingModel =

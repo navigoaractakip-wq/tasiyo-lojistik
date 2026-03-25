@@ -18,6 +18,11 @@ export interface AuthUser {
   role: Role;
   company?: string | null;
   avatarUrl?: string | null;
+  website?: string | null;
+  address?: string | null;
+  taxNumber?: string | null;
+  vehicleTypes?: string | null;
+  notificationSettings?: string | null;
 }
 
 interface AuthContextType {
@@ -58,6 +63,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: data.role as Role,
         company: data.company,
         avatarUrl: data.avatarUrl,
+        website: data.website,
+        address: data.address,
+        taxNumber: data.taxNumber,
+        vehicleTypes: data.vehicleTypes,
+        notificationSettings: data.notificationSettings,
       });
     } catch {
       localStorage.removeItem(TOKEN_KEY);

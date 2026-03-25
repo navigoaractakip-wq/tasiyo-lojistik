@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useUpdateUser } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -10,13 +10,39 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Building2, User, Bell, CreditCard, Shield, Save, Loader2,
-  Mail, Phone, MapPin, Globe, Camera, CheckCircle2, AlertTriangle,
+  Building2, Bell, CreditCard, Shield, Save, Loader2,
+  Mail, Phone, MapPin, Globe, Camera, CheckCircle2, AlertTriangle, Truck,
 } from "lucide-react";
+
+const VEHICLE_OPTIONS = [
+  "Tır", "Kamyon", "Kamyonet", "Frigorifik", "Tenteli", "Lowbed",
+  "Tanker", "Damperli", "Konteyner", "Kuru Yük", "Modüler Taşıt",
+];
+
+interface NotifState {
+  newOffer: boolean;
+  offerAccepted: boolean;
+  shipmentUpdate: boolean;
+  shipmentDelivered: boolean;
+  paymentReminder: boolean;
+  smsEnabled: boolean;
+  emailEnabled: boolean;
+}
+
+const DEFAULT_NOTIF: NotifState = {
+  newOffer: true,
+  offerAccepted: true,
+  shipmentUpdate: true,
+  shipmentDelivered: true,
+  paymentReminder: false,
+  smsEnabled: false,
+  emailEnabled: true,
+};
 
 export default function CorporateSettings() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState({
     companyName: "",
@@ -27,41 +53,74 @@ export default function CorporateSettings() {
     taxNumber: "",
   });
 
+  const [logoPreview, setLogoPreview] = useState<string>("");
+  const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState<NotifState>(DEFAULT_NOTIF);
+
   useEffect(() => {
-    if (user) {
-      setProfile(prev => ({
-        ...prev,
-        companyName: user.company ?? "",
-        contactName: user.name ?? "",
-        phone: user.phone ?? "",
-      }));
+    if (!user) return;
+    setProfile({
+      companyName: user.company ?? "",
+      contactName: user.name ?? "",
+      phone: user.phone ?? "",
+      address: user.address ?? "",
+      website: user.website ?? "",
+      taxNumber: user.taxNumber ?? "",
+    });
+    if (user.avatarUrl) setLogoPreview(user.avatarUrl);
+    if (user.vehicleTypes) {
+      try {
+        setSelectedVehicles(JSON.parse(user.vehicleTypes));
+      } catch {
+        setSelectedVehicles(user.vehicleTypes.split(",").filter(Boolean));
+      }
+    }
+    if (user.notificationSettings) {
+      try {
+        const parsed = JSON.parse(user.notificationSettings);
+        setNotifications(prev => ({ ...prev, ...parsed }));
+      } catch {
+        /* ignore */
+      }
     }
   }, [user]);
-
-  const [notifications, setNotifications] = useState({
-    newOffer: true,
-    offerAccepted: true,
-    shipmentUpdate: true,
-    shipmentDelivered: true,
-    paymentReminder: false,
-    smsEnabled: false,
-    emailEnabled: true,
-  });
 
   const { mutate: updateUser, isPending: saving } = useUpdateUser({
     mutation: {
       onSuccess: () => {
         toast({ title: "Ayarlar Kaydedildi", description: "Profil bilgileriniz başarıyla güncellendi." });
       },
-      onError: (err: any) => {
-        toast({
-          title: "Hata",
-          description: err?.data?.message ?? "Kayıt sırasında bir sorun oluştu.",
-          variant: "destructive",
-        });
+      onError: (err: unknown) => {
+        const message = (err as { data?: { message?: string } })?.data?.message ?? "Kayıt sırasında bir sorun oluştu.";
+        toast({ title: "Hata", description: message, variant: "destructive" });
       },
     },
   });
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Dosya çok büyük", description: "Logo en fazla 2 MB olabilir.", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      setLogoPreview(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const toggleVehicle = (v: string) => {
+    setSelectedVehicles(prev =>
+      prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]
+    );
+  };
+
+  const toggleNotification = (key: keyof NotifState) => {
+    setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const handleSave = () => {
     if (!user?.id) return;
@@ -71,13 +130,22 @@ export default function CorporateSettings() {
         name: profile.contactName || undefined,
         phone: profile.phone || undefined,
         company: profile.companyName || undefined,
+        avatarUrl: logoPreview || undefined,
+        website: profile.website || undefined,
+        address: profile.address || undefined,
+        taxNumber: profile.taxNumber || undefined,
+        vehicleTypes: JSON.stringify(selectedVehicles),
+        notificationSettings: JSON.stringify(notifications),
       },
     });
   };
 
-  const toggleNotification = (key: keyof typeof notifications) => {
-    setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  const initials = (profile.companyName || profile.contactName || "?")
+    .split(" ")
+    .slice(0, 2)
+    .map(w => w[0])
+    .join("")
+    .toUpperCase();
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -102,17 +170,42 @@ export default function CorporateSettings() {
           <CardDescription>Şirket bilgilerini güncel tutun</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Avatar */}
+          {/* Logo Upload */}
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20 border-2 border-border">
-              <AvatarImage src="" />
+              <AvatarImage src={logoPreview} />
               <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                {(profile.companyName || profile.contactName || "?").slice(0, 2).toUpperCase()}
+                {initials}
               </AvatarFallback>
             </Avatar>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Camera className="w-4 h-4" /> Logo Yükle
-            </Button>
+            <div className="space-y-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Camera className="w-4 h-4" /> Logo Yükle
+              </Button>
+              {logoPreview && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive block"
+                  onClick={() => { setLogoPreview(""); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                >
+                  Logoyu Kaldır
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground">PNG veya JPG, en fazla 2 MB</p>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={handleLogoChange}
+            />
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
@@ -141,7 +234,6 @@ export default function CorporateSettings() {
                   type="email"
                   value={user?.email ?? ""}
                   readOnly
-                  title="E-posta adresi değiştirilemez"
                 />
               </div>
               <p className="text-xs text-muted-foreground">E-posta adresi değiştirilemez</p>
@@ -195,6 +287,43 @@ export default function CorporateSettings() {
         </CardContent>
       </Card>
 
+      {/* Vehicle Fleet */}
+      <Card className="shadow-sm">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Truck className="w-5 h-5 text-orange-600" />
+            <CardTitle className="text-lg">Araç Filom</CardTitle>
+          </div>
+          <CardDescription>Çalıştığınız araç tiplerini seçin — şoförler ilanlarınızı filtrelerken görsün</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {VEHICLE_OPTIONS.map(v => {
+              const active = selectedVehicles.includes(v);
+              return (
+                <button
+                  key={v}
+                  onClick={() => toggleVehicle(v)}
+                  className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors
+                    ${active
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border text-muted-foreground hover:border-primary/60 hover:text-foreground"
+                    }`}
+                >
+                  {v}
+                  {active && <CheckCircle2 className="inline w-3.5 h-3.5 ml-1.5 -mt-0.5" />}
+                </button>
+              );
+            })}
+          </div>
+          {selectedVehicles.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-3">
+              {selectedVehicles.length} araç tipi seçildi: {selectedVehicles.join(", ")}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Notifications */}
       <Card className="shadow-sm">
         <CardHeader>
@@ -205,24 +334,21 @@ export default function CorporateSettings() {
           <CardDescription>Hangi bildirimleri almak istediğinizi seçin</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Channels */}
           <div className="grid grid-cols-2 gap-3 mb-2">
             {[
-              { key: "emailEnabled", label: "E-posta Bildirimleri", icon: <Mail className="w-4 h-4" /> },
-              { key: "smsEnabled",   label: "SMS Bildirimleri",     icon: <Phone className="w-4 h-4" /> },
+              { key: "emailEnabled" as const, label: "E-posta Bildirimleri", icon: <Mail className="w-4 h-4" /> },
+              { key: "smsEnabled" as const,   label: "SMS Bildirimleri",     icon: <Phone className="w-4 h-4" /> },
             ].map(ch => (
               <button
                 key={ch.key}
-                onClick={() => toggleNotification(ch.key as keyof typeof notifications)}
+                onClick={() => toggleNotification(ch.key)}
                 className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-colors text-sm font-medium
-                  ${notifications[ch.key as keyof typeof notifications]
+                  ${notifications[ch.key]
                     ? "border-primary bg-primary/5 text-primary"
                     : "border-border text-muted-foreground hover:border-primary/50"}`}
               >
                 {ch.icon}{ch.label}
-                {notifications[ch.key as keyof typeof notifications] && (
-                  <CheckCircle2 className="w-4 h-4 ml-auto" />
-                )}
+                {notifications[ch.key] && <CheckCircle2 className="w-4 h-4 ml-auto" />}
               </button>
             ))}
           </div>
@@ -230,11 +356,11 @@ export default function CorporateSettings() {
           <Separator />
 
           {[
-            { key: "newOffer",          label: "Yeni Teklif",           desc: "İlanınıza yeni teklif geldiğinde" },
-            { key: "offerAccepted",     label: "Teklif Kabulü",         desc: "Teklifiniz kabul/reddedildiğinde" },
-            { key: "shipmentUpdate",    label: "Taşıma Güncellemesi",   desc: "Sevkiyat durumu değiştiğinde" },
-            { key: "shipmentDelivered", label: "Teslim Bildirimi",      desc: "Yük teslim edildiğinde" },
-            { key: "paymentReminder",   label: "Ödeme Hatırlatması",    desc: "Ödeme tarihi yaklaştığında" },
+            { key: "newOffer" as const,          label: "Yeni Teklif",           desc: "İlanınıza yeni teklif geldiğinde" },
+            { key: "offerAccepted" as const,     label: "Teklif Kabulü",         desc: "Teklifiniz kabul/reddedildiğinde" },
+            { key: "shipmentUpdate" as const,    label: "Taşıma Güncellemesi",   desc: "Sevkiyat durumu değiştiğinde" },
+            { key: "shipmentDelivered" as const, label: "Teslim Bildirimi",      desc: "Yük teslim edildiğinde" },
+            { key: "paymentReminder" as const,   label: "Ödeme Hatırlatması",    desc: "Ödeme tarihi yaklaştığında" },
           ].map(n => (
             <div key={n.key} className="flex items-center justify-between py-2">
               <div>
@@ -242,12 +368,12 @@ export default function CorporateSettings() {
                 <p className="text-xs text-muted-foreground">{n.desc}</p>
               </div>
               <button
-                onClick={() => toggleNotification(n.key as keyof typeof notifications)}
+                onClick={() => toggleNotification(n.key)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                  ${notifications[n.key as keyof typeof notifications] ? "bg-primary" : "bg-gray-200"}`}
+                  ${notifications[n.key] ? "bg-primary" : "bg-gray-200"}`}
               >
                 <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform
-                  ${notifications[n.key as keyof typeof notifications] ? "translate-x-6" : "translate-x-1"}`}
+                  ${notifications[n.key] ? "translate-x-6" : "translate-x-1"}`}
                 />
               </button>
             </div>

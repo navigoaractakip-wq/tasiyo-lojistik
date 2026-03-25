@@ -98,6 +98,12 @@ router.get("/users/:id", async (req, res): Promise<void> => {
       role: user.role as "admin" | "corporate" | "individual" | "driver",
       status: user.status as "active" | "suspended" | "pending",
       company: user.company ?? undefined,
+      avatarUrl: user.avatarUrl ?? undefined,
+      website: user.website ?? undefined,
+      address: user.address ?? undefined,
+      taxNumber: user.taxNumber ?? undefined,
+      vehicleTypes: user.vehicleTypes ?? undefined,
+      notificationSettings: user.notificationSettings ?? undefined,
       rating: user.rating ?? undefined,
       totalShipments: user.totalShipments ?? undefined,
       createdAt: user.createdAt,
@@ -120,10 +126,16 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
   }
 
   const updates: Record<string, unknown> = {};
-  if (parsed.data.name) updates.name = parsed.data.name;
-  if (parsed.data.phone) updates.phone = parsed.data.phone;
-  if (parsed.data.status) updates.status = parsed.data.status;
-  if (parsed.data.company) updates.company = parsed.data.company;
+  if (parsed.data.name !== undefined) updates.name = parsed.data.name;
+  if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone;
+  if (parsed.data.status !== undefined) updates.status = parsed.data.status;
+  if (parsed.data.company !== undefined) updates.company = parsed.data.company;
+  if (parsed.data.avatarUrl !== undefined) updates.avatarUrl = parsed.data.avatarUrl;
+  if (parsed.data.website !== undefined) updates.website = parsed.data.website;
+  if (parsed.data.address !== undefined) updates.address = parsed.data.address;
+  if (parsed.data.taxNumber !== undefined) updates.taxNumber = parsed.data.taxNumber;
+  if (parsed.data.vehicleTypes !== undefined) updates.vehicleTypes = parsed.data.vehicleTypes;
+  if (parsed.data.notificationSettings !== undefined) updates.notificationSettings = parsed.data.notificationSettings;
 
   const [user] = await db
     .update(usersTable)
@@ -141,8 +153,16 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
       id: String(user.id),
       name: user.name,
       email: user.email,
+      phone: user.phone ?? undefined,
       role: user.role as "admin" | "corporate" | "individual" | "driver",
       status: user.status as "active" | "suspended" | "pending",
+      company: user.company ?? undefined,
+      avatarUrl: user.avatarUrl ?? undefined,
+      website: user.website ?? undefined,
+      address: user.address ?? undefined,
+      taxNumber: user.taxNumber ?? undefined,
+      vehicleTypes: user.vehicleTypes ?? undefined,
+      notificationSettings: user.notificationSettings ?? undefined,
       createdAt: user.createdAt,
     })
   );
