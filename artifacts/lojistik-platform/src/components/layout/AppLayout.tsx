@@ -105,8 +105,18 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 bg-sidebar text-sidebar-foreground border-b border-sidebar-border sticky top-0 z-50">
         <div className="flex items-center gap-2">
-          <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-8 w-8 brightness-0 invert" />
-          <span className="font-display font-bold text-xl">TaşıYo</span>
+          {role === "corporate" && user?.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt="Şirket Logosu"
+              className="h-8 w-8 object-contain rounded-md bg-white/15 p-0.5"
+            />
+          ) : (
+            <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-8 w-8 brightness-0 invert" />
+          )}
+          <span className="font-display font-bold text-xl">
+            {role === "corporate" && user?.company ? user.company : "TaşıYo"}
+          </span>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-white">
           {isMobileMenuOpen ? <X /> : <Menu />}
@@ -120,9 +130,19 @@ export function AppLayout({ children }: AppLayoutProps) {
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <div className="p-6 hidden md:flex items-center gap-3">
-          <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-10 w-10 brightness-0 invert" />
+          {role === "corporate" && user?.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt="Şirket Logosu"
+              className="h-10 w-10 object-contain rounded-lg bg-white/15 p-0.5"
+            />
+          ) : (
+            <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-10 w-10 brightness-0 invert" />
+          )}
           <div>
-            <h1 className="font-display font-bold text-2xl tracking-tight text-white leading-none">TaşıYo</h1>
+            <h1 className="font-display font-bold text-2xl tracking-tight text-white leading-none">
+              {role === "corporate" && user?.company ? user.company : "TaşıYo"}
+            </h1>
             <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-widest font-semibold">Lojistik Platformu</span>
           </div>
         </div>
