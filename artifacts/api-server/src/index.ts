@@ -17,9 +17,11 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
+const ADMIN_EMAIL = "navigoaractakip@gmail.com";
+
 async function seedAdminUser() {
   const existing = await db
-    .select({ id: usersTable.id })
+    .select({ id: usersTable.id, email: usersTable.email })
     .from(usersTable)
     .where(eq(usersTable.role, "admin"))
     .limit(1);
@@ -27,7 +29,7 @@ async function seedAdminUser() {
   if (existing.length === 0) {
     await db.insert(usersTable).values({
       name: "Süper Yönetici",
-      email: "admin@tasiyo.com",
+      email: ADMIN_EMAIL,
       phone: "+90 532 000 0000",
       role: "admin",
       status: "active",
@@ -35,7 +37,13 @@ async function seedAdminUser() {
       rating: 5.0,
       totalShipments: 0,
     });
-    logger.info("Admin kullanıcısı oluşturuldu: admin@tasiyo.com");
+    logger.info(`Admin kullanıcısı oluşturuldu: ${ADMIN_EMAIL}`);
+  } else if (existing[0].email !== ADMIN_EMAIL) {
+    await db
+      .update(usersTable)
+      .set({ email: ADMIN_EMAIL })
+      .where(eq(usersTable.id, existing[0].id));
+    logger.info(`Admin e-postası güncellendi: ${existing[0].email} → ${ADMIN_EMAIL}`);
   } else {
     logger.info({ id: existing[0].id }, "Admin kullanıcısı zaten mevcut");
   }
