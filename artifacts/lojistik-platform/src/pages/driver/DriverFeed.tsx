@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useListLoads, useCreateOffer } from "@workspace/api-client-react";
+import { useListLoads, useCreateOffer, useListOffers } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { getListOffersQueryKey } from "@workspace/api-client-react";
 import { Search, Filter, BellRing, MapPin, Weight, Truck, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -28,8 +30,17 @@ type Load = {
   isPremium?: boolean;
 };
 
-function OfferDialog({ load, onClose }: { load: Load; onClose: () => void }) {
+function OfferDialog({
+  load,
+  onClose,
+  onOfferSuccess,
+}: {
+  load: Load;
+  onClose: () => void;
+  onOfferSuccess: (loadId: string) => void;
+}) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [price, setPrice] = useState(load.price ? String(load.price) : "");
   const [note, setNote] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -38,6 +49,8 @@ function OfferDialog({ load, onClose }: { load: Load; onClose: () => void }) {
     mutation: {
       onSuccess: () => {
         setSubmitted(true);
+        onOfferSuccess(load.id);
+        queryClient.invalidateQueries({ queryKey: getListOffersQueryKey({ byMe: "true" }) });
       },
       onError: (err: any) => {
         const msg = err?.data?.message ?? err?.message ?? "Teklif gönderilemedi.";
@@ -157,8 +170,10 @@ function OfferDialog({ load, onClose }: { load: Load; onClose: () => void }) {
 
 export default function DriverFeed() {
   const { data, isLoading } = useListLoads({ status: "active" });
+  const { data: myOffersData } = useListOffers({ byMe: "true" });
   const [offerLoad, setOfferLoad] = useState<Load | null>(null);
   const [search, setSearch] = useState("");
+  const [localOfferedIds, setLocalOfferedIds] = useState<Set<string>>(new Set());
 
   const allLoads: Load[] = (data?.loads ?? []) as Load[];
   const loads = allLoads.filter(l =>
@@ -167,6 +182,16 @@ export default function DriverFeed() {
     l.origin.toLowerCase().includes(search.toLowerCase()) ||
     l.destination.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Build set of load IDs that the driver already offered on
+  const offeredLoadIds = new Set<string>([
+    ...((myOffersData?.offers ?? []).map((o: any) => String(o.loadId))),
+    ...localOfferedIds,
+  ]);
+
+  const handleOfferSuccess = (loadId: string) => {
+    setLocalOfferedIds(prev => new Set([...prev, loadId]));
+  };
 
   return (
     <div className="bg-gray-50 min-h-screen pb-20">
@@ -227,46 +252,69 @@ export default function DriverFeed() {
           </div>
         )}
 
-        {loads.map(load => (
-          <Card key={load.id} className="shadow-sm border-0 overflow-hidden">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <h3 className="font-semibold text-sm leading-snug pr-2">{load.title}</h3>
-                <Badge variant="outline" className="text-xs shrink-0">{load.loadType}</Badge>
-              </div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex flex-col items-center gap-0.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  <div className="w-px h-3 bg-gray-200" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+        {loads.map(load => {
+          const alreadyOffered = offeredLoadIds.has(String(load.id));
+          return (
+            <Card key={load.id} className="shadow-sm border-0 overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-semibold text-sm leading-snug pr-2">{load.title}</h3>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {alreadyOffered && (
+                      <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] px-1.5 py-0 font-semibold gap-1">
+                        <CheckCircle2 className="w-2.5 h-2.5" /> Teklif Verildi
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="text-xs">{load.loadType}</Badge>
+                  </div>
                 </div>
-                <div className="text-xs space-y-0.5 flex-1">
-                  <p className="text-gray-700">{load.origin}</p>
-                  <p className="text-gray-700">{load.destination}</p>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                    <div className="w-px h-3 bg-gray-200" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  </div>
+                  <div className="text-xs space-y-0.5 flex-1">
+                    <p className="text-gray-700">{load.origin}</p>
+                    <p className="text-gray-700">{load.destination}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
-                <div>
-                  {load.pricingModel === "bidding"
-                    ? <span className="text-blue-600 font-semibold text-sm">Açık Teklif</span>
-                    : <span className="text-green-600 font-bold">{load.price?.toLocaleString("tr-TR")} ₺</span>
-                  }
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
+                  <div>
+                    {load.pricingModel === "bidding"
+                      ? <span className="text-blue-600 font-semibold text-sm">Açık Teklif</span>
+                      : <span className="text-green-600 font-bold">{load.price?.toLocaleString("tr-TR")} ₺</span>
+                    }
+                  </div>
+                  {alreadyOffered ? (
+                    <div className="flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-700 rounded-xl px-3 h-8 text-xs font-semibold">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Teklif Verildi
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="h-8 px-4 rounded-xl text-xs"
+                      onClick={() => setOfferLoad(load)}
+                    >
+                      Teklif Ver
+                    </Button>
+                  )}
                 </div>
-                <Button
-                  size="sm"
-                  className="h-8 px-4 rounded-xl text-xs"
-                  onClick={() => setOfferLoad(load)}
-                >
-                  Teklif Ver
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <Dialog open={!!offerLoad} onOpenChange={open => !open && setOfferLoad(null)}>
-        {offerLoad && <OfferDialog load={offerLoad} onClose={() => setOfferLoad(null)} />}
+        {offerLoad && (
+          <OfferDialog
+            load={offerLoad}
+            onClose={() => setOfferLoad(null)}
+            onOfferSuccess={handleOfferSuccess}
+          />
+        )}
       </Dialog>
     </div>
   );
