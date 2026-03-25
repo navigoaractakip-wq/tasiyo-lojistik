@@ -10,8 +10,11 @@ pnpm workspace monorepo using TypeScript. Full-featured Turkish logistics platfo
 - **Routes**: `POST /api/auth/send-otp`, `POST /api/auth/verify-otp`, `GET /api/auth/me`, `POST /api/auth/logout`
 - **Session storage**: `user_sessions` table in PostgreSQL (token-based, 30-day expiry)
 - **OTP storage**: `otp_codes` table (10-minute expiry, single use)
-- **Fallback**: If Twilio/SMTP not configured, OTP is logged to server console (dev mode)
+- **Fallback**: If Twilio/SMTP not configured, OTP is logged to server console AND returned as `devCode` in JSON response (auto-fills OTP field in UI)
 - **Platform settings**: Twilio and SMTP credentials stored in `platform_settings` DB table, editable via Admin → Ayarlar
+- **Admin user seed**: `artifacts/api-server/src/index.ts` — on startup, if no admin role user exists in DB, creates `admin@tasiyo.com` automatically
+  - Dev DB: admin is `ahmet@logistikco.com` (id: 1) — seed skips creation
+  - Production: seed creates `admin@tasiyo.com` on first deploy
 
 ## Admin Settings Page
 
