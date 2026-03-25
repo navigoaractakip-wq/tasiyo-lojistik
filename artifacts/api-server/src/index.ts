@@ -20,13 +20,35 @@ if (Number.isNaN(port) || port <= 0) {
 const ADMIN_EMAIL = "navigoaractakip@gmail.com";
 
 async function seedAdminUser() {
-  const existing = await db
+  // Step 1: check if the target email already exists (possibly as a non-admin)
+  const [targetUser] = await db
+    .select({ id: usersTable.id, role: usersTable.role, email: usersTable.email })
+    .from(usersTable)
+    .where(eq(usersTable.email, ADMIN_EMAIL))
+    .limit(1);
+
+  if (targetUser) {
+    if (targetUser.role === "admin") {
+      logger.info({ id: targetUser.id }, "Admin kullanıcısı zaten mevcut");
+      return;
+    }
+    // Target email exists but has a different role — promote to admin
+    await db
+      .update(usersTable)
+      .set({ role: "admin", status: "active", name: "Süper Yönetici" })
+      .where(eq(usersTable.id, targetUser.id));
+    logger.info(`${ADMIN_EMAIL} kullanıcısı admin'e yükseltildi (önceki rol: ${targetUser.role})`);
+    return;
+  }
+
+  // Step 2: target email doesn't exist — find any existing admin and update their email
+  const [existingAdmin] = await db
     .select({ id: usersTable.id, email: usersTable.email })
     .from(usersTable)
     .where(eq(usersTable.role, "admin"))
     .limit(1);
 
-  if (existing.length === 0) {
+  if (!existingAdmin) {
     await db.insert(usersTable).values({
       name: "Süper Yönetici",
       email: ADMIN_EMAIL,
@@ -38,14 +60,12 @@ async function seedAdminUser() {
       totalShipments: 0,
     });
     logger.info(`Admin kullanıcısı oluşturuldu: ${ADMIN_EMAIL}`);
-  } else if (existing[0].email !== ADMIN_EMAIL) {
+  } else {
     await db
       .update(usersTable)
       .set({ email: ADMIN_EMAIL })
-      .where(eq(usersTable.id, existing[0].id));
-    logger.info(`Admin e-postası güncellendi: ${existing[0].email} → ${ADMIN_EMAIL}`);
-  } else {
-    logger.info({ id: existing[0].id }, "Admin kullanıcısı zaten mevcut");
+      .where(eq(usersTable.id, existingAdmin.id));
+    logger.info(`Admin e-postası güncellendi: ${existingAdmin.email} → ${ADMIN_EMAIL}`);
   }
 }
 
