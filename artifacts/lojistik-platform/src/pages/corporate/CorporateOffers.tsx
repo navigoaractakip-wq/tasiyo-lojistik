@@ -5,44 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   MessageSquare, Search, CheckCircle2, XCircle, Clock,
   Star, Truck, Package, TrendingDown, Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-const MOCK_OFFERS = [
-  {
-    id:"1", loadId:"1", loadTitle:"İstanbul - Ankara Parsiyel Yük",
-    driverName:"Mehmet Yılmaz", driverRating:4.9, driverShipments:127, driverPhone:"+90 533 222 33 44",
-    amount:13500, note:"Araç müsait, aynı gün yola çıkabilirim.", status:"pending",
-    vehicleType:"TIR", vehiclePlate:"34 ABC 1234", createdAt:"2 saat önce",
-  },
-  {
-    id:"2", loadId:"1", loadTitle:"İstanbul - Ankara Parsiyel Yük",
-    driverName:"Ali Demir",     driverRating:4.8, driverShipments:89,  driverPhone:"+90 534 333 44 55",
-    amount:14000, note:"Deneyimli sürücü, sigortalı araç.", status:"pending",
-    vehicleType:"Kapalı Kasa", vehiclePlate:"06 DEF 5678", createdAt:"3 saat önce",
-  },
-  {
-    id:"3", loadId:"2", loadTitle:"İzmir - Bursa Konteyner",
-    driverName:"Hasan Çelik",  driverRating:4.7, driverShipments:210, driverPhone:"+90 535 444 55 66",
-    amount:21000, note:"Konteyner taşımacılığında 5 yıl deneyim.", status:"accepted",
-    vehicleType:"Açık Kasa", vehiclePlate:"35 GHI 9012", createdAt:"1 gün önce",
-  },
-  {
-    id:"4", loadId:"3", loadTitle:"Kocaeli - Antalya Tekstil",
-    driverName:"Fatih Kaya",   driverRating:4.9, driverShipments:315, driverPhone:"+90 536 555 66 77",
-    amount:17500, note:"Tekstil yükü deneyimim mevcut, itinalı taşıma garantisi.", status:"pending",
-    vehicleType:"Tenteli TIR", vehiclePlate:"41 JKL 3456", createdAt:"5 saat önce",
-  },
-  {
-    id:"5", loadId:"3", loadTitle:"Kocaeli - Antalya Tekstil",
-    driverName:"İbrahim Şahin",driverRating:4.6, driverShipments:78,  driverPhone:"+90 537 666 77 88",
-    amount:18000, note:"GPS takipli araç, günlük konum bildirimi.", status:"rejected",
-    vehicleType:"Kapalı Kasa", vehiclePlate:"41 MNO 7890", createdAt:"6 saat önce",
-  },
-];
 
 type OfferStatus = "pending" | "accepted" | "rejected";
 
@@ -57,14 +25,14 @@ export default function CorporateOffers() {
   const [filter, setFilter] = useState("all");
   const { toast } = useToast();
 
-  const { data } = useListOffers({});
+  const { data, isLoading } = useListOffers({});
   const [localStatuses, setLocalStatuses] = useState<Record<string, OfferStatus>>({});
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const { mutate: acceptOfferMutate } = useAcceptOffer();
   const { mutate: rejectOfferMutate } = useRejectOffer();
 
-  const rawOffers = (data?.offers?.length ? data.offers : MOCK_OFFERS) as any[];
+  const rawOffers = (data?.offers ?? []) as any[];
   const offers = rawOffers.map(o => ({
     ...o,
     driverName: o.driver?.name ?? o.driverName ?? "—",
@@ -151,7 +119,10 @@ export default function CorporateOffers() {
           <Card key={s.label} className={`border-0 shadow-sm ${s.bg}`}>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">{s.label}</p>
-              <p className={`text-3xl font-bold mt-1 ${s.text}`}>{s.value}</p>
+              {isLoading
+                ? <Skeleton className="h-9 w-12 mt-1" />
+                : <p className={`text-3xl font-bold mt-1 ${s.text}`}>{s.value}</p>
+              }
             </CardContent>
           </Card>
         ))}
@@ -179,10 +150,29 @@ export default function CorporateOffers() {
 
       {/* Offers List */}
       <div className="space-y-4">
-        {filtered.map(offer => {
+        {isLoading && Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i} className="shadow-sm">
+            <CardContent className="p-5">
+              <div className="flex gap-4">
+                <Skeleton className="h-12 w-12 rounded-full shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-3 w-56" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+                <div className="space-y-2 text-right">
+                  <Skeleton className="h-7 w-24 ml-auto" />
+                  <Skeleton className="h-5 w-20 ml-auto" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {!isLoading && filtered.map(offer => {
           const st = STATUS_MAP[offer.status] ?? STATUS_MAP.pending;
           const isPending = offer.status === "pending";
-          const isLoading = loadingId === offer.id;
+          const isOfferLoading = loadingId === offer.id;
 
           return (
             <Card key={offer.id} className="shadow-sm">
@@ -237,19 +227,19 @@ export default function CorporateOffers() {
                           size="sm"
                           variant="outline"
                           className="gap-1 border-red-200 text-red-600 hover:bg-red-50"
-                          disabled={isLoading}
+                          disabled={isOfferLoading}
                           onClick={() => handleReject(offer.id)}
                         >
-                          {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                          {isOfferLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
                           Reddet
                         </Button>
                         <Button
                           size="sm"
                           className="gap-1 bg-green-600 hover:bg-green-700"
-                          disabled={isLoading}
+                          disabled={isOfferLoading}
                           onClick={() => handleAccept(offer.id)}
                         >
-                          {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                          {isOfferLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                           Kabul Et
                         </Button>
                       </div>
@@ -261,10 +251,15 @@ export default function CorporateOffers() {
           );
         })}
 
-        {filtered.length === 0 && (
+        {!isLoading && filtered.length === 0 && (
           <div className="text-center py-16">
             <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-30" />
-            <p className="font-medium text-muted-foreground">Teklif bulunamadı</p>
+            <p className="font-medium text-muted-foreground">
+              {offers.length === 0 ? "Henüz hiç teklif gelmedi" : "Teklif bulunamadı"}
+            </p>
+            {offers.length === 0 && (
+              <p className="text-sm text-muted-foreground mt-1">Yük ilanı oluşturduğunuzda şoförler teklif gönderebilir</p>
+            )}
           </div>
         )}
       </div>

@@ -1,21 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   MapPin, Package, Clock, CheckCircle2, Truck, Navigation,
   Phone, Star, Loader2, WifiOff, Radio,
-  PackageCheck, AlertCircle,
+  PackageCheck, AlertCircle, History,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useListShipments } from "@workspace/api-client-react";
-
-const COMPLETED_SHIPMENTS = [
-  { id: "SHP-2030", load: "Bursa - İzmir Konteyner", date: "22 Mart 2026", price: 22000, rating: 5 },
-  { id: "SHP-2025", load: "Kocaeli - Antalya Genel Kargo", date: "19 Mart 2026", price: 18500, rating: 4 },
-  { id: "SHP-2018", load: "Ankara - İstanbul Parsiyel", date: "15 Mart 2026", price: 14000, rating: 5 },
-  { id: "SHP-2011", load: "İzmir - Bursa Otomotiv", date: "10 Mart 2026", price: 28000, rating: 5 },
-];
 
 const STATUS_STEPS: { status: string; label: string; icon: typeof Truck }[] = [
   { status: "pickup", label: "Yükleme Noktasındayım", icon: PackageCheck },
@@ -38,6 +32,14 @@ export default function DriverTracking() {
 
   const { data: shipmentsData } = useListShipments({ status: "in_transit" });
   const activeShipment = shipmentsData?.shipments?.[0] ?? null;
+
+  const { data: deliveredData, isLoading: deliveredLoading } = useListShipments({ status: "delivered" });
+  const deliveredShipments = deliveredData?.shipments ?? [];
+  const now = new Date();
+  const thisMonthCount = deliveredShipments.filter(s => {
+    const d = new Date(s.createdAt);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
 
   const startTracking = useCallback(() => {
     if (!navigator.geolocation) {
@@ -274,44 +276,89 @@ export default function DriverTracking() {
 
         {activeTab === "history" && (
           <div className="space-y-3">
+            {/* Stats */}
             <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: "Toplam Sefer", value: "127" },
-                { label: "Bu Ay", value: "12" },
-                { label: "Ort. Puan", value: "4.9 ⭐" },
-              ].map(s => (
-                <Card key={s.label} className="border-0 shadow-sm">
-                  <CardContent className="p-3 text-center">
-                    <p className="text-xl font-bold text-primary">{s.value}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
-                  </CardContent>
-                </Card>
-              ))}
+              {deliveredLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i} className="border-0 shadow-sm">
+                    <CardContent className="p-3 text-center">
+                      <Skeleton className="h-7 w-10 mx-auto" />
+                      <Skeleton className="h-3 w-16 mx-auto mt-1" />
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                [
+                  { label: "Toplam Sefer", value: String(deliveredShipments.length) },
+                  { label: "Bu Ay",        value: String(thisMonthCount) },
+                  { label: "Tamamlandı",   value: deliveredShipments.length > 0 ? "✓" : "—" },
+                ].map(s => (
+                  <Card key={s.label} className="border-0 shadow-sm">
+                    <CardContent className="p-3 text-center">
+                      <p className="text-xl font-bold text-primary">{s.value}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
 
-            {COMPLETED_SHIPMENTS.map(s => (
-              <Card key={s.id} className="shadow-sm border-0">
+            {/* Delivered list */}
+            {deliveredLoading && Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className="shadow-sm border-0">
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
-                        <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">{s.load}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{s.id} · {s.date}</p>
-                        <div className="flex mt-1">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Star key={i} className={`w-3 h-3 ${i < s.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"}`} />
-                          ))}
-                        </div>
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-10 h-10 rounded-xl shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-3 w-28" />
                     </div>
-                    <p className="text-sm font-bold text-green-600">{s.price.toLocaleString("tr-TR")} ₺</p>
+                    <Skeleton className="h-5 w-20" />
                   </div>
                 </CardContent>
               </Card>
             ))}
+
+            {!deliveredLoading && deliveredShipments.length === 0 && (
+              <div className="text-center py-12">
+                <History className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                <p className="font-medium text-gray-500">Henüz tamamlanan sefer yok</p>
+                <p className="text-xs text-muted-foreground mt-1">Teslim ettiğiniz seferler burada görünür</p>
+              </div>
+            )}
+
+            {!deliveredLoading && deliveredShipments.map(s => {
+              const loadLabel = s.load
+                ? (s.load.origin && s.load.destination
+                    ? `${s.load.origin} → ${s.load.destination}`
+                    : s.load.title)
+                : "Yük bilgisi yok";
+              const dateLabel = new Date(s.createdAt).toLocaleDateString("tr-TR", {
+                day: "2-digit", month: "long", year: "numeric",
+              });
+              return (
+                <Card key={s.id} className="shadow-sm border-0">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+                          <CheckCircle2 className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold leading-tight">{loadLabel}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">#{s.id} · {dateLabel}</p>
+                        </div>
+                      </div>
+                      {s.load?.price && (
+                        <p className="text-sm font-bold text-green-600 shrink-0 ml-2">
+                          {s.load.price.toLocaleString("tr-TR")} ₺
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
