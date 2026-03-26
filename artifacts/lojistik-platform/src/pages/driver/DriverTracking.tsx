@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,35 +15,87 @@ import {
 import {
   MapPin, Package, CheckCircle2, Truck, Navigation,
   Loader2, WifiOff, Radio,
-  PackageCheck, History, AlertTriangle,
+  PackageCheck, History, AlertTriangle, Info,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 
-const STATUS_STEPS: { status: string; label: string; icon: typeof Truck }[] = [
-  { status: "pickup", label: "Yükleme Noktasındayım", icon: PackageCheck },
-  { status: "in_transit", label: "Yola Çıktım", icon: Truck },
-  { status: "delivered", label: "Teslim Ettim", icon: CheckCircle2 },
-];
+// ─── Step definitions ──────────────────────────────────────────────────────────
 
-const CONFIRM_MESSAGES: Record<string, { title: string; description: string; confirmText: string; isWarning?: boolean }> = {
-  pickup: {
-    title: "Yükleme Noktasında mısınız?",
-    description: "Yükleme noktasında olduğunuzu ve yükü almaya hazır olduğunuzu onaylıyor musunuz?",
-    confirmText: "Evet, Yükleme Noktasındayım",
-  },
-  in_transit: {
-    title: "Yola çıkıyor musunuz?",
-    description: "Yükü alıp yola çıktığınızı onaylıyor musunuz? Bu işlem geri alınamaz.",
-    confirmText: "Evet, Yola Çıktım",
-  },
-  delivered: {
-    title: "Teslimatı tamamlamak istediğinizden emin misiniz?",
-    description: "Yükü teslim ettiğinizi onaylıyor musunuz? Bu işlem geri alınamaz ve sefer tamamlanmış olarak kaydedilecektir.",
-    confirmText: "Evet, Teslim Ettim",
+interface TripStep {
+  event: string;
+  label: string;
+  icon: typeof Truck;
+  status?: string;
+  isWarning?: boolean;
+  isInfo?: boolean;
+}
+
+interface WaypointDef {
+  type: "pickup" | "delivery";
+  name: string;
+}
+
+function buildSteps(load: any): TripStep[] {
+  const steps: TripStep[] = [];
+
+  // Adım 0 — otomatik bilgi adımı (şoför tıklayamaz)
+  steps.push({
+    event: "assigned",
+    label: "Sefer Atandı – Yükleme Noktasına Gidiniz",
+    icon: Navigation,
+    isInfo: true,
+  });
+
+  // Ara durakları parse et
+  const waypoints: WaypointDef[] = [];
+  if (load?.waypoints) {
+    try { waypoints.push(...JSON.parse(load.waypoints)); } catch { /* ignore */ }
+  }
+
+  const pickupWaypoints = waypoints.filter((w) => w.type === "pickup");
+  const deliveryWaypoints = waypoints.filter((w) => w.type === "delivery");
+
+  // İlk yükleme noktası (origin)
+  steps.push({
+    event: "pickup_0",
+    label: `Yükleme: ${load?.origin ?? "Yükleme Noktası"}`,
+    icon: PackageCheck,
+    status: "pickup",
+  });
+
+  // Ek yükleme ara durakları
+  pickupWaypoints.forEach((wp, i) => {
+    steps.push({
+      event: `pickup_${i + 1}`,
+      label: `Yükleme ${i + 2}: ${wp.name}`,
+      icon: PackageCheck,
+    });
+  });
+
+  // Ara teslim noktaları
+  deliveryWaypoints.forEach((wp, i) => {
+    steps.push({
+      event: `delivery_${i}`,
+      label: `Ara Teslim ${i + 1}: ${wp.name}`,
+      icon: MapPin,
+      status: i === 0 ? "in_transit" : undefined,
+    });
+  });
+
+  // Son teslim noktası (destination)
+  steps.push({
+    event: "delivered",
+    label: `Teslim: ${load?.destination ?? "Teslim Noktası"}`,
+    icon: CheckCircle2,
+    status: "delivered",
     isWarning: true,
-  },
-};
+  });
+
+  return steps;
+}
+
+// ─── Geo & Fetch helpers ────────────────────────────────────────────────────────
 
 type GeoStatus = "idle" | "requesting" | "tracking" | "denied" | "error";
 
@@ -55,6 +107,8 @@ async function fetchShipments(token: string, status: string) {
   return r.json();
 }
 
+// ─── Component ──────────────────────────────────────────────────────────────────
+
 export default function DriverTracking() {
   const { toast } = useToast();
   const { token } = useAuth();
@@ -63,27 +117,19 @@ export default function DriverTracking() {
   const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
-  const [activeShipmentStatus, setActiveShipmentStatus] = useState<string>("pickup");
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [pendingAction, setPendingAction] = useState<{ status: string; label: string } | null>(null);
+  const [pendingStep, setPendingStep] = useState<TripStep | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const locationSentRef = useRef<number>(0);
 
-  // Active shipment: status "pickup" (just assigned) OR "in_transit" (on the way)
+  // Aktif seferler: assigned + pickup + in_transit
   const { data: activeData } = useQuery({
     queryKey: ["shipments-active", token],
-    queryFn: () => fetchShipments(token!, "pickup,in_transit"),
+    queryFn: () => fetchShipments(token!, "assigned,pickup,in_transit"),
     enabled: !!token,
     refetchInterval: 30_000,
   });
   const activeShipment = (activeData?.shipments ?? [])[0] ?? null;
-
-  // Sync UI status with actual shipment status
-  useEffect(() => {
-    if (activeShipment?.status) {
-      setActiveShipmentStatus(activeShipment.status);
-    }
-  }, [activeShipment]);
 
   const { data: deliveredData, isLoading: deliveredLoading } = useQuery({
     queryKey: ["shipments-delivered", token],
@@ -97,6 +143,19 @@ export default function DriverTracking() {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;
 
+  // ─── Dinamik adımlar ─────────────────────────────────────────────────────────
+  const steps = useMemo(() => buildSteps(activeShipment?.load), [activeShipment?.load]);
+
+  const completedEvents = useMemo(() => {
+    return new Set<string>((activeShipment?.timeline ?? []).map((e: any) => e.event as string));
+  }, [activeShipment?.timeline]);
+
+  const currentStepIdx = useMemo(() => {
+    const idx = steps.findIndex((s) => !completedEvents.has(s.event));
+    return idx === -1 ? steps.length : idx; // hepsi tamamlandıysa
+  }, [steps, completedEvents]);
+
+  // ─── GPS ─────────────────────────────────────────────────────────────────────
   const startTracking = useCallback(() => {
     if (!navigator.geolocation) {
       toast({ title: "GPS Desteklenmiyor", description: "Bu cihaz konum servisini desteklemiyor.", variant: "destructive" });
@@ -110,11 +169,9 @@ export default function DriverTracking() {
         setCoords({ lat: latitude, lng: longitude });
         setAccuracy(Math.round(acc));
         setGeoStatus("tracking");
-
-        // Throttle: send to API at most every 30 seconds if there's an active shipment
-        const now = Date.now();
-        if (activeShipment && now - locationSentRef.current > 30_000) {
-          locationSentRef.current = now;
+        const now2 = Date.now();
+        if (activeShipment && now2 - locationSentRef.current > 30_000) {
+          locationSentRef.current = now2;
           fetch(`/api/shipments/${activeShipment.id}/location`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -133,7 +190,7 @@ export default function DriverTracking() {
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, [activeShipment, toast]);
+  }, [activeShipment, token, toast]);
 
   const stopTracking = useCallback(() => {
     if (watchIdRef.current != null) {
@@ -148,23 +205,32 @@ export default function DriverTracking() {
     if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
   }, []);
 
-  const handleStatusUpdate = async (status: string, label: string) => {
+  // ─── Adım güncelle ───────────────────────────────────────────────────────────
+  const handleStepUpdate = async (step: TripStep) => {
     if (!activeShipment) {
-      toast({ title: "Aktif Sefer Yok", description: "Durum güncellemesi yapacak aktif sefer bulunamadı.", variant: "destructive" });
+      toast({ title: "Aktif Sefer Yok", description: "Güncelleme yapacak aktif sefer bulunamadı.", variant: "destructive" });
       return;
     }
     setUpdatingStatus(true);
     try {
+      const body: Record<string, any> = {
+        event: step.event,
+        description: step.label,
+        ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
+      };
+      // Eğer adım ana durumu değiştiriyorsa ekle
+      if (step.status) body.status = step.status;
+
       const res = await fetch(`/api/shipments/${activeShipment.id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status, description: label, ...(coords ? { lat: coords.lat, lng: coords.lng } : {}) }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(await res.text());
-      setActiveShipmentStatus(status);
-      toast({ title: "Durum Güncellendi", description: `${label} bilgisi kaydedildi.` });
+
+      toast({ title: "Durum Güncellendi", description: `${step.label} bilgisi kaydedildi.` });
       qc.invalidateQueries({ queryKey: ["shipments-active"] });
-      if (status === "delivered") {
+      if (step.status === "delivered") {
         qc.invalidateQueries({ queryKey: ["shipments-delivered"] });
       }
     } catch {
@@ -174,6 +240,31 @@ export default function DriverTracking() {
     }
   };
 
+  // ─── Onay diyaloğu mesajları ─────────────────────────────────────────────────
+  const getConfirmMessages = (step: TripStep) => {
+    if (step.event === "delivered") {
+      return {
+        title: "Teslimatı tamamlamak istediğinizden emin misiniz?",
+        description: "Yükü teslim ettiğinizi onaylıyor musunuz? Bu işlem geri alınamaz ve sefer tamamlanmış olarak kaydedilecektir.",
+        confirmText: "Evet, Teslim Ettim",
+      };
+    }
+    if (step.event.startsWith("pickup_")) {
+      return {
+        title: "Yükleme noktasında mısınız?",
+        description: `"${step.label}" noktasında olduğunuzu onaylıyor musunuz?`,
+        confirmText: "Evet, Buradayım",
+      };
+    }
+    return {
+      title: "Bu adımı onaylıyor musunuz?",
+      description: `"${step.label}" adımını tamamlıyor musunuz?`,
+      confirmText: "Evet, Onayla",
+    };
+  };
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
+
   return (
     <div className="bg-gray-50 min-h-full">
       {/* Header */}
@@ -181,7 +272,7 @@ export default function DriverTracking() {
         <h1 className="text-xl font-bold text-white mb-1">Takip Merkezi</h1>
         <p className="text-blue-200 text-sm">Konum paylaşımı ve sefer yönetimi</p>
         <div className="flex gap-2 mt-4">
-          {(["active", "history"] as const).map(tab => (
+          {(["active", "history"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -218,7 +309,6 @@ export default function DriverTracking() {
                 </div>
               </div>
               <CardContent className="p-5 space-y-4">
-                {/* Coordinates display */}
                 {coords ? (
                   <div className="bg-gray-50 rounded-xl p-4 space-y-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -251,8 +341,6 @@ export default function DriverTracking() {
                       : "Konumunuzu paylaşmak için aşağıdaki butona basın."}
                   </div>
                 )}
-
-                {/* GPS toggle button */}
                 {geoStatus === "tracking" ? (
                   <Button onClick={stopTracking} variant="outline" className="w-full gap-2 border-red-200 text-red-600 hover:bg-red-50">
                     <Radio className="w-4 h-4" /> Takibi Durdur
@@ -271,7 +359,7 @@ export default function DriverTracking() {
               </CardContent>
             </Card>
 
-            {/* Active Shipment Status */}
+            {/* Active Shipment — Dynamic Steps */}
             {activeShipment ? (
               <Card className="shadow-sm border-0">
                 <CardHeader className="pb-2">
@@ -280,48 +368,87 @@ export default function DriverTracking() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-green-500" />
+                  {/* Rota özeti */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <MapPin className="w-4 h-4 text-green-500 shrink-0" />
                     <span className="text-sm text-gray-600">{(activeShipment as any).load?.origin ?? "—"}</span>
-                    <span className="text-gray-300 mx-1">→</span>
-                    <MapPin className="w-4 h-4 text-red-500" />
+                    {(() => {
+                      const wps: WaypointDef[] = [];
+                      try { wps.push(...JSON.parse((activeShipment as any).load?.waypoints ?? "[]")); } catch { /* ignore */ }
+                      return wps.map((wp, i) => (
+                        <span key={i} className="flex items-center gap-1 text-sm text-gray-500">
+                          <span className="text-gray-300">→</span>
+                          <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          {wp.name}
+                        </span>
+                      ));
+                    })()}
+                    <span className="text-gray-300">→</span>
+                    <MapPin className="w-4 h-4 text-red-500 shrink-0" />
                     <span className="text-sm text-gray-600">{(activeShipment as any).load?.destination ?? "—"}</span>
                   </div>
+
+                  {/* Adımlar */}
                   <div className="grid gap-2">
-                    {STATUS_STEPS.map(({ status, label, icon: Icon }) => {
-                      const isCurrent = activeShipmentStatus === status;
-                      const isDone = STATUS_STEPS.findIndex(s => s.status === activeShipmentStatus) >
-                                    STATUS_STEPS.findIndex(s => s.status === status);
-                      const isDelivered = status === "delivered";
+                    {steps.map((step, idx) => {
+                      const isDone = completedEvents.has(step.event);
+                      const isCurrent = idx === currentStepIdx;
+                      const isNext = !isDone && !isCurrent;
+
+                      if (step.isInfo) {
+                        return (
+                          <div
+                            key={step.event}
+                            className={`flex items-center gap-3 p-3 rounded-xl border ${
+                              isDone
+                                ? "bg-green-50 border-green-100 text-green-700"
+                                : "bg-blue-50 border-blue-100 text-blue-700"
+                            }`}
+                          >
+                            {isDone
+                              ? <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                              : <Info className="w-5 h-5 text-blue-500 shrink-0 animate-pulse" />}
+                            <span className="text-sm font-medium">{step.label}</span>
+                            {isDone && <Badge className="ml-auto text-xs bg-green-100 text-green-700 border-0">Tamamlandı</Badge>}
+                            {!isDone && <Badge className="ml-auto text-xs bg-blue-100 text-blue-700 border-0">Aktif</Badge>}
+                          </div>
+                        );
+                      }
+
                       return (
                         <button
-                          key={status}
-                          disabled={isDone || isCurrent || updatingStatus}
-                          onClick={() => setPendingAction({ status, label })}
+                          key={step.event}
+                          disabled={isDone || !isCurrent || updatingStatus}
+                          onClick={() => setPendingStep(step)}
                           className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
-                            isCurrent
-                              ? "bg-blue-50 border-blue-200 text-blue-700"
-                              : isDone
-                              ? "bg-green-50 border-green-100 text-green-700 opacity-60"
-                              : isDelivered
-                              ? "bg-white border-orange-100 hover:border-orange-300 hover:bg-orange-50/50 text-gray-700"
-                              : "bg-white border-gray-100 hover:border-blue-200 hover:bg-blue-50/50 text-gray-700"
+                            isDone
+                              ? "bg-green-50 border-green-100 text-green-700 opacity-70 cursor-default"
+                              : isCurrent && step.isWarning
+                              ? "bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 cursor-pointer"
+                              : isCurrent
+                              ? "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 cursor-pointer"
+                              : "bg-white border-gray-100 text-gray-400 cursor-not-allowed opacity-50"
                           }`}
                         >
                           {isDone
                             ? <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
-                            : isCurrent
-                            ? <Icon className="w-5 h-5 text-blue-600 shrink-0 animate-pulse" />
-                            : isDelivered && !isCurrent && !isDone
+                            : isCurrent && step.isWarning
                             ? <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0" />
-                            : <Icon className="w-5 h-5 shrink-0" />}
-                          <span className="text-sm font-medium">{label}</span>
-                          {isCurrent && <Badge className="ml-auto text-xs bg-blue-100 text-blue-700 border-0">Aktif</Badge>}
+                            : isCurrent
+                            ? <step.icon className="w-5 h-5 text-blue-600 shrink-0 animate-pulse" />
+                            : <step.icon className="w-5 h-5 text-gray-300 shrink-0" />}
+
+                          <span className="text-sm font-medium">{step.label}</span>
+
                           {isDone && <Badge className="ml-auto text-xs bg-green-100 text-green-700 border-0">Tamamlandı</Badge>}
-                          {!isCurrent && !isDone && (
-                            <span className={`ml-auto text-xs ${isDelivered ? "text-orange-500 font-medium" : "text-muted-foreground"}`}>
-                              {isDelivered ? "Onayla ⚠" : "Güncelle →"}
-                            </span>
+                          {isCurrent && !step.isWarning && (
+                            <span className="ml-auto text-xs text-blue-600 font-medium">Buradayım →</span>
+                          )}
+                          {isCurrent && step.isWarning && (
+                            <span className="ml-auto text-xs text-orange-600 font-medium">Onayla ⚠</span>
+                          )}
+                          {isNext && (
+                            <span className="ml-auto text-xs text-gray-300">Bekliyor</span>
                           )}
                         </button>
                       );
@@ -343,7 +470,6 @@ export default function DriverTracking() {
 
         {activeTab === "history" && (
           <div className="space-y-3">
-            {/* Stats */}
             <div className="grid grid-cols-3 gap-3">
               {deliveredLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
@@ -357,9 +483,9 @@ export default function DriverTracking() {
               ) : (
                 [
                   { label: "Toplam Sefer", value: String(deliveredShipments.length) },
-                  { label: "Bu Ay",        value: String(thisMonthCount) },
-                  { label: "Tamamlandı",   value: deliveredShipments.length > 0 ? "✓" : "—" },
-                ].map(s => (
+                  { label: "Bu Ay", value: String(thisMonthCount) },
+                  { label: "Tamamlandı", value: deliveredShipments.length > 0 ? "✓" : "—" },
+                ].map((s) => (
                   <Card key={s.label} className="border-0 shadow-sm">
                     <CardContent className="p-3 text-center">
                       <p className="text-xl font-bold text-primary">{s.value}</p>
@@ -370,7 +496,6 @@ export default function DriverTracking() {
               )}
             </div>
 
-            {/* Delivered list */}
             {deliveredLoading && Array.from({ length: 3 }).map((_, i) => (
               <Card key={i} className="shadow-sm border-0">
                 <CardContent className="p-4">
@@ -431,18 +556,18 @@ export default function DriverTracking() {
       </div>
 
       {/* Confirmation Dialog */}
-      {pendingAction && (() => {
-        const conf = CONFIRM_MESSAGES[pendingAction.status];
+      {pendingStep && (() => {
+        const conf = getConfirmMessages(pendingStep);
         return (
-          <Dialog open={!!pendingAction} onOpenChange={(open) => { if (!open) setPendingAction(null); }}>
+          <Dialog open={!!pendingStep} onOpenChange={(open) => { if (!open) setPendingStep(null); }}>
             <DialogContent className="sm:max-w-sm mx-4">
               <DialogHeader>
-                <DialogTitle className={`flex items-center gap-2 ${conf?.isWarning ? "text-orange-600" : ""}`}>
-                  {conf?.isWarning && <AlertTriangle className="w-5 h-5 text-orange-500" />}
-                  {conf?.title ?? pendingAction.label}
+                <DialogTitle className={`flex items-center gap-2 ${pendingStep.isWarning ? "text-orange-600" : ""}`}>
+                  {pendingStep.isWarning && <AlertTriangle className="w-5 h-5 text-orange-500" />}
+                  {conf.title}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-gray-600 pt-1">
-                  {conf?.description ?? "Bu işlemi onaylıyor musunuz?"}
+                  {conf.description}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="flex gap-2 pt-2">
@@ -450,19 +575,19 @@ export default function DriverTracking() {
                   variant="outline"
                   className="flex-1"
                   disabled={updatingStatus}
-                  onClick={() => setPendingAction(null)}
+                  onClick={() => setPendingStep(null)}
                 >
                   İptal
                 </Button>
                 <Button
-                  className={`flex-1 ${conf?.isWarning ? "bg-orange-600 hover:bg-orange-700" : ""}`}
+                  className={`flex-1 ${pendingStep.isWarning ? "bg-orange-600 hover:bg-orange-700" : ""}`}
                   disabled={updatingStatus}
                   onClick={async () => {
-                    await handleStatusUpdate(pendingAction.status, pendingAction.label);
-                    setPendingAction(null);
+                    await handleStepUpdate(pendingStep);
+                    setPendingStep(null);
                   }}
                 >
-                  {updatingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : (conf?.confirmText ?? "Onayla")}
+                  {updatingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : conf.confirmText}
                 </Button>
               </DialogFooter>
             </DialogContent>

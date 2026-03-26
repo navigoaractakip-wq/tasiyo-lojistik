@@ -31,7 +31,7 @@ function mapShipment(
   return {
     id: String(shipment.id),
     loadId: String(shipment.loadId),
-    status: shipment.status as "pickup" | "in_transit" | "delivered" | "cancelled",
+    status: shipment.status as "assigned" | "pickup" | "in_transit" | "delivered" | "cancelled",
     currentLat: shipment.currentLat ?? undefined,
     currentLng: shipment.currentLng ?? undefined,
     estimatedArrival: shipment.estimatedArrival ?? undefined,
@@ -60,6 +60,7 @@ function mapShipment(
           status: load.status as "active" | "pending" | "assigned" | "completed" | "cancelled",
           price: load.price ?? undefined,
           createdAt: load.createdAt,
+          waypoints: load.waypoints ?? undefined,
         }
       : undefined,
     timeline: events.map((e) => ({
@@ -128,26 +129,43 @@ router.patch("/shipments/:id/status", async (req, res): Promise<void> => {
   const id = parseInt(raw, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const { status, description, lat, lng } = req.body;
-  if (!status) { res.status(400).json({ error: "status required" }); return; }
+  const { status, event, description, lat, lng } = req.body;
 
-  const validStatuses = ["pickup", "in_transit", "delivered", "cancelled"];
-  if (!validStatuses.includes(status)) { res.status(400).json({ error: "invalid status" }); return; }
+  // En az biri gerekli: status (ana durum değişimi) veya event (ara durak kaydı)
+  if (!status && !event) { res.status(400).json({ error: "status or event required" }); return; }
 
-  const [shipment] = await db
-    .update(shipmentsTable)
-    .set({
-      status,
-      ...(lat != null && lng != null ? { currentLat: lat, currentLng: lng } : {}),
-    })
-    .where(eq(shipmentsTable.id, id))
-    .returning();
+  const validStatuses = ["assigned", "pickup", "in_transit", "delivered", "cancelled"];
+  if (status && !validStatuses.includes(status)) { res.status(400).json({ error: "invalid status" }); return; }
 
-  if (!shipment) { res.status(404).json({ error: "Shipment not found" }); return; }
+  let shipment: typeof shipmentsTable.$inferSelect;
 
+  if (status) {
+    // Ana durum güncellemesi
+    const [updated] = await db
+      .update(shipmentsTable)
+      .set({
+        status,
+        ...(lat != null && lng != null ? { currentLat: lat, currentLng: lng } : {}),
+      })
+      .where(eq(shipmentsTable.id, id))
+      .returning();
+    if (!updated) { res.status(404).json({ error: "Shipment not found" }); return; }
+    shipment = updated;
+  } else {
+    // Sadece event kaydı — ana durumu değiştirme
+    const [existing] = await db.select().from(shipmentsTable).where(eq(shipmentsTable.id, id));
+    if (!existing) { res.status(404).json({ error: "Shipment not found" }); return; }
+    shipment = existing;
+    if (lat != null && lng != null) {
+      await db.update(shipmentsTable).set({ currentLat: lat, currentLng: lng }).where(eq(shipmentsTable.id, id));
+    }
+  }
+
+  // Event kaydı yap (status veya custom event adı)
+  const eventName = event ?? status;
   await db.insert(shipmentEventsTable).values({
     shipmentId: id,
-    event: status,
+    event: eventName,
     description: description ?? null,
     lat: lat ?? null,
     lng: lng ?? null,

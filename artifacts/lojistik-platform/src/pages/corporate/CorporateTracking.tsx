@@ -55,14 +55,17 @@ async function fetchMyShipments(token: string, status?: string): Promise<{ shipm
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Truck }> = {
-  pickup:     { label: "Yükleme Bekleniyor", color: "bg-yellow-100 text-yellow-700", icon: PackageCheck },
+  assigned:   { label: "Şoför Atandı",       color: "bg-purple-100 text-purple-700", icon: Truck },
+  pickup:     { label: "Yükleme Noktasında", color: "bg-yellow-100 text-yellow-700", icon: PackageCheck },
   in_transit: { label: "Yolda",             color: "bg-blue-100 text-blue-700",    icon: Truck },
   delivered:  { label: "Teslim Edildi",      color: "bg-green-100 text-green-700",  icon: CheckCircle2 },
   cancelled:  { label: "İptal Edildi",       color: "bg-red-100 text-red-700",      icon: AlertCircle },
 };
 
 const EVENT_LABELS: Record<string, string> = {
+  assigned:   "Sefer Atandı",
   pickup:     "Yükleme Noktasında",
+  pickup_0:   "İlk Yükleme Noktasında",
   in_transit: "Yola Çıkıldı",
   delivered:  "Teslim Edildi",
   cancelled:  "İptal Edildi",

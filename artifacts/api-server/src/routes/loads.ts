@@ -47,6 +47,7 @@ function mapLoad(load: typeof loadsTable.$inferSelect, poster?: typeof usersTabl
     originLng: load.originLng ?? undefined,
     destLat: load.destLat ?? undefined,
     destLng: load.destLng ?? undefined,
+    waypoints: load.waypoints ?? undefined,
   };
 }
 
@@ -108,6 +109,7 @@ router.post("/loads", optionalAuth, async (req: AuthRequest, res): Promise<void>
       destLat: 39.9334 + (Math.random() - 0.5) * 5,
       destLng: 32.8597 + (Math.random() - 0.5) * 10,
       postedById: req.userId ?? null,
+      waypoints: (d as any).waypoints ?? null,
     })
     .returning();
 

@@ -160,15 +160,15 @@ router.post("/offers/:id/accept", async (req, res): Promise<void> => {
       .values({
         loadId: offer.loadId,
         driverId: offer.driverId,
-        status: "pickup",
+        status: "assigned",
       })
       .returning();
 
     // İlk event kaydı
     await db.insert(shipmentEventsTable).values({
       shipmentId: newShipment.id,
-      event: "pickup",
-      description: "Teklif kabul edildi. Şoför yükleme noktasına yönlendiriliyor.",
+      event: "assigned",
+      description: "Teklif kabul edildi. Şoför yükleme noktasına yönlendirilecek.",
     });
 
     // İlanı "assigned" olarak işaretle

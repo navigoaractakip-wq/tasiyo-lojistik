@@ -26,6 +26,7 @@ export const loadsTable = pgTable("loads", {
   originLng: real("origin_lng"),
   destLat: real("dest_lat"),
   destLng: real("dest_lng"),
+  waypoints: text("waypoints"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

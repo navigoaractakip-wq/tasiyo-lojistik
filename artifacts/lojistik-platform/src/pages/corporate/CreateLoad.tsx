@@ -62,17 +62,28 @@ export default function CreateLoad() {
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    const origin = pickupStops.filter(Boolean).join(" | ") || "Belirtilmedi";
-    const destination = deliveryStops.filter(Boolean).join(" | ") || "Belirtilmedi";
+    const validPickup = pickupStops.filter(Boolean);
+    const validDelivery = deliveryStops.filter(Boolean);
 
-    if (!pickupStops.some(Boolean)) {
+    if (validPickup.length === 0) {
       toast({ title: "Hata", description: "En az bir yükleme noktası girin.", variant: "destructive" });
       return;
     }
-    if (!deliveryStops.some(Boolean)) {
+    if (validDelivery.length === 0) {
       toast({ title: "Hata", description: "En az bir teslim noktası girin.", variant: "destructive" });
       return;
     }
+
+    // origin = ilk yükleme, destination = son teslim
+    const origin = validPickup[0];
+    const destination = validDelivery[validDelivery.length - 1];
+
+    // Ara duraklar: ek yükleme noktaları + ilk n-1 teslim noktaları
+    const waypointList = [
+      ...validPickup.slice(1).map((name) => ({ type: "pickup" as const, name })),
+      ...validDelivery.slice(0, -1).map((name) => ({ type: "delivery" as const, name })),
+    ];
+    const waypoints = waypointList.length > 0 ? JSON.stringify(waypointList) : undefined;
 
     try {
       await createMutation.mutateAsync({
@@ -80,6 +91,7 @@ export default function CreateLoad() {
           ...values,
           origin,
           destination,
+          waypoints,
           pickupDate: values.pickupDate || undefined,
           deliveryDate: values.deliveryDate || undefined,
         } as any,

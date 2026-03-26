@@ -372,6 +372,7 @@ export const CreateLoadBody = zod.object({
   minBid: zod.number().optional(),
   pickupDate: zod.coerce.date().optional(),
   deliveryDate: zod.coerce.date().optional(),
+  waypoints: zod.string().optional(),
 });
 
 /**
@@ -803,6 +804,7 @@ export const ListShipmentsResponse = zod.object({
           originLng: zod.number().optional(),
           destLat: zod.number().optional(),
           destLng: zod.number().optional(),
+          waypoints: zod.string().optional(),
         })
         .optional(),
       driver: zod
@@ -820,7 +822,7 @@ export const ListShipmentsResponse = zod.object({
           createdAt: zod.date(),
         })
         .optional(),
-      status: zod.enum(["pickup", "in_transit", "delivered", "cancelled"]),
+      status: zod.enum(["assigned", "pickup", "in_transit", "delivered", "cancelled"]),
       currentLat: zod.number().optional(),
       currentLng: zod.number().optional(),
       estimatedArrival: zod.date().optional(),
@@ -900,6 +902,7 @@ export const GetShipmentResponse = zod.object({
       originLng: zod.number().optional(),
       destLat: zod.number().optional(),
       destLng: zod.number().optional(),
+      waypoints: zod.string().optional(),
     })
     .optional(),
   driver: zod
@@ -917,7 +920,7 @@ export const GetShipmentResponse = zod.object({
       createdAt: zod.date(),
     })
     .optional(),
-  status: zod.enum(["pickup", "in_transit", "delivered", "cancelled"]),
+  status: zod.enum(["assigned", "pickup", "in_transit", "delivered", "cancelled"]),
   currentLat: zod.number().optional(),
   currentLng: zod.number().optional(),
   estimatedArrival: zod.date().optional(),

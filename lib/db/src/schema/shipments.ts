@@ -6,7 +6,7 @@ export const shipmentsTable = pgTable("shipments", {
   id: serial("id").primaryKey(),
   loadId: integer("load_id").notNull(),
   driverId: integer("driver_id"),
-  status: text("status").notNull().default("pickup"),
+  status: text("status").notNull().default("assigned"),
   currentLat: real("current_lat"),
   currentLng: real("current_lng"),
   estimatedArrival: timestamp("estimated_arrival", { withTimezone: true }),
