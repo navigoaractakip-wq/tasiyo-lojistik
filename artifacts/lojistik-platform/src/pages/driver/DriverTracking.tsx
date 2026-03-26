@@ -5,9 +5,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   MapPin, Package, CheckCircle2, Truck, Navigation,
   Loader2, WifiOff, Radio,
-  PackageCheck, History,
+  PackageCheck, History, AlertTriangle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -17,6 +25,25 @@ const STATUS_STEPS: { status: string; label: string; icon: typeof Truck }[] = [
   { status: "in_transit", label: "Yola Çıktım", icon: Truck },
   { status: "delivered", label: "Teslim Ettim", icon: CheckCircle2 },
 ];
+
+const CONFIRM_MESSAGES: Record<string, { title: string; description: string; confirmText: string; isWarning?: boolean }> = {
+  pickup: {
+    title: "Yükleme Noktasında mısınız?",
+    description: "Yükleme noktasında olduğunuzu ve yükü almaya hazır olduğunuzu onaylıyor musunuz?",
+    confirmText: "Evet, Yükleme Noktasındayım",
+  },
+  in_transit: {
+    title: "Yola çıkıyor musunuz?",
+    description: "Yükü alıp yola çıktığınızı onaylıyor musunuz? Bu işlem geri alınamaz.",
+    confirmText: "Evet, Yola Çıktım",
+  },
+  delivered: {
+    title: "Teslimatı tamamlamak istediğinizden emin misiniz?",
+    description: "Yükü teslim ettiğinizi onaylıyor musunuz? Bu işlem geri alınamaz ve sefer tamamlanmış olarak kaydedilecektir.",
+    confirmText: "Evet, Teslim Ettim",
+    isWarning: true,
+  },
+};
 
 type GeoStatus = "idle" | "requesting" | "tracking" | "denied" | "error";
 
@@ -38,6 +65,7 @@ export default function DriverTracking() {
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [activeShipmentStatus, setActiveShipmentStatus] = useState<string>("pickup");
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ status: string; label: string } | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const locationSentRef = useRef<number>(0);
 
@@ -264,16 +292,19 @@ export default function DriverTracking() {
                       const isCurrent = activeShipmentStatus === status;
                       const isDone = STATUS_STEPS.findIndex(s => s.status === activeShipmentStatus) >
                                     STATUS_STEPS.findIndex(s => s.status === status);
+                      const isDelivered = status === "delivered";
                       return (
                         <button
                           key={status}
                           disabled={isDone || isCurrent || updatingStatus}
-                          onClick={() => handleStatusUpdate(status, label)}
+                          onClick={() => setPendingAction({ status, label })}
                           className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
                             isCurrent
                               ? "bg-blue-50 border-blue-200 text-blue-700"
                               : isDone
                               ? "bg-green-50 border-green-100 text-green-700 opacity-60"
+                              : isDelivered
+                              ? "bg-white border-orange-100 hover:border-orange-300 hover:bg-orange-50/50 text-gray-700"
                               : "bg-white border-gray-100 hover:border-blue-200 hover:bg-blue-50/50 text-gray-700"
                           }`}
                         >
@@ -281,12 +312,16 @@ export default function DriverTracking() {
                             ? <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
                             : isCurrent
                             ? <Icon className="w-5 h-5 text-blue-600 shrink-0 animate-pulse" />
+                            : isDelivered && !isCurrent && !isDone
+                            ? <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0" />
                             : <Icon className="w-5 h-5 shrink-0" />}
                           <span className="text-sm font-medium">{label}</span>
                           {isCurrent && <Badge className="ml-auto text-xs bg-blue-100 text-blue-700 border-0">Aktif</Badge>}
                           {isDone && <Badge className="ml-auto text-xs bg-green-100 text-green-700 border-0">Tamamlandı</Badge>}
                           {!isCurrent && !isDone && (
-                            <span className="ml-auto text-xs text-muted-foreground">Güncelle →</span>
+                            <span className={`ml-auto text-xs ${isDelivered ? "text-orange-500 font-medium" : "text-muted-foreground"}`}>
+                              {isDelivered ? "Onayla ⚠" : "Güncelle →"}
+                            </span>
                           )}
                         </button>
                       );
@@ -394,6 +429,46 @@ export default function DriverTracking() {
           </div>
         )}
       </div>
+
+      {/* Confirmation Dialog */}
+      {pendingAction && (() => {
+        const conf = CONFIRM_MESSAGES[pendingAction.status];
+        return (
+          <Dialog open={!!pendingAction} onOpenChange={(open) => { if (!open) setPendingAction(null); }}>
+            <DialogContent className="sm:max-w-sm mx-4">
+              <DialogHeader>
+                <DialogTitle className={`flex items-center gap-2 ${conf?.isWarning ? "text-orange-600" : ""}`}>
+                  {conf?.isWarning && <AlertTriangle className="w-5 h-5 text-orange-500" />}
+                  {conf?.title ?? pendingAction.label}
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-600 pt-1">
+                  {conf?.description ?? "Bu işlemi onaylıyor musunuz?"}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  disabled={updatingStatus}
+                  onClick={() => setPendingAction(null)}
+                >
+                  İptal
+                </Button>
+                <Button
+                  className={`flex-1 ${conf?.isWarning ? "bg-orange-600 hover:bg-orange-700" : ""}`}
+                  disabled={updatingStatus}
+                  onClick={async () => {
+                    await handleStatusUpdate(pendingAction.status, pendingAction.label);
+                    setPendingAction(null);
+                  }}
+                >
+                  {updatingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : (conf?.confirmText ?? "Onayla")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }
