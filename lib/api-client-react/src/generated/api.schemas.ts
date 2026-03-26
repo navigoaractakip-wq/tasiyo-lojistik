@@ -135,6 +135,7 @@ export interface Load {
   originLng?: number;
   destLat?: number;
   destLng?: number;
+  waypoints?: string;
 }
 
 export interface LoadListResponse {

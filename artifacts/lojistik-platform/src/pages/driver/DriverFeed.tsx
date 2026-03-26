@@ -15,6 +15,12 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
+interface WaypointDef { type: "pickup" | "delivery"; name: string; }
+function parseWaypoints(s?: string | null): WaypointDef[] {
+  if (!s) return [];
+  try { return JSON.parse(s); } catch { return []; }
+}
+
 type Load = {
   id: string;
   title: string;
@@ -28,6 +34,7 @@ type Load = {
   status: string;
   createdAt: string | Date;
   isPremium?: boolean;
+  waypoints?: string | null;
 };
 
 function OfferDialog({
@@ -106,14 +113,32 @@ function OfferDialog({
         <DialogDescription className="text-xs leading-relaxed">{load.title}</DialogDescription>
       </DialogHeader>
 
-      <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 text-sm mb-1">
-        <div className="flex items-center gap-2 text-gray-600">
-          <MapPin className="w-3.5 h-3.5 text-green-500 shrink-0" /><span>{load.origin}</span>
-        </div>
-        <div className="flex items-center gap-2 text-gray-600">
-          <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0" /><span>{load.destination}</span>
-        </div>
-        <div className="flex gap-4 text-xs text-gray-500 pt-1 border-t border-gray-100">
+      <div className="bg-gray-50 rounded-xl p-3 text-sm mb-1">
+        {(() => {
+          const wps = parseWaypoints(load.waypoints);
+          const pickupWps = wps.filter(w => w.type === "pickup");
+          const deliveryWps = wps.filter(w => w.type === "delivery");
+          const allStops = [
+            { name: load.origin, color: "text-green-500", label: "Yükleme" },
+            ...pickupWps.map((w, i) => ({ name: w.name, color: "text-blue-500", label: `Yükleme ${i + 2}` })),
+            ...deliveryWps.map((w, i) => ({ name: w.name, color: "text-orange-500", label: `Ara Teslim ${i + 1}` })),
+            { name: load.destination, color: "text-red-500", label: "Teslim" },
+          ];
+          return (
+            <div className="space-y-1.5">
+              {allStops.map((stop, i) => (
+                <div key={i} className="flex items-start gap-2 text-gray-700">
+                  <MapPin className={`w-3.5 h-3.5 ${stop.color} shrink-0 mt-0.5`} />
+                  <div>
+                    <span className="text-xs text-gray-400 font-medium">{stop.label}: </span>
+                    <span>{stop.name}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+        <div className="flex gap-4 text-xs text-gray-500 pt-2 mt-1 border-t border-gray-100">
           {load.weight != null && (
             <span className="flex items-center gap-1"><Weight className="w-3 h-3" />{load.weight} ton</span>
           )}

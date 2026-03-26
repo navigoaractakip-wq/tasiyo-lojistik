@@ -7,6 +7,12 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Link } from "wouter";
 
+interface WaypointDef { type: "pickup" | "delivery"; name: string; }
+function parseWaypoints(s?: string): WaypointDef[] {
+  if (!s) return [];
+  try { return JSON.parse(s); } catch { return []; }
+}
+
 interface LoadCardProps {
   load: Load;
   viewMode?: "corporate" | "driver" | "admin";
@@ -54,23 +60,43 @@ export function LoadCard({ load, viewMode = "corporate", onAction, onDelete }: L
             )}
           </div>
           
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-center gap-1">
-              <div className="h-3 w-3 rounded-full bg-primary ring-4 ring-primary/20"></div>
-              <div className="w-0.5 h-8 bg-gray-300 dashed"></div>
-              <MapPin className="h-4 w-4 text-accent" />
-            </div>
-            <div className="flex-1 flex flex-col justify-between h-[68px]">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Yükleme</p>
-                <p className="font-bold text-foreground truncate">{load.origin}</p>
+          {(() => {
+            const wps = parseWaypoints((load as any).waypoints);
+            const pickupWps = wps.filter(w => w.type === "pickup");
+            const deliveryWps = wps.filter(w => w.type === "delivery");
+            const allStops = [
+              { label: "Yükleme", name: load.origin, color: "bg-primary ring-primary/20", isFirst: true, isLast: false },
+              ...pickupWps.map((w, i) => ({ label: `Yükleme ${i + 2}`, name: w.name, color: "bg-blue-400 ring-blue-200", isFirst: false, isLast: false })),
+              ...deliveryWps.map((w, i) => ({ label: `Ara Teslim ${i + 1}`, name: w.name, color: "bg-orange-400 ring-orange-200", isFirst: false, isLast: false })),
+              { label: "Teslimat", name: load.destination, color: "bg-accent ring-accent/20", isFirst: false, isLast: true },
+            ];
+            return (
+              <div className="flex items-start gap-3">
+                <div className="flex flex-col items-center pt-1">
+                  {allStops.map((stop, i) => (
+                    <div key={i} className="flex flex-col items-center">
+                      <div className={`h-3 w-3 rounded-full ring-4 ${stop.isLast ? "" : ""} ${
+                        stop.isFirst ? "bg-primary ring-primary/20" :
+                        stop.isLast ? "bg-accent ring-accent/20" :
+                        "bg-blue-400 ring-blue-200"
+                      }`} />
+                      {i < allStops.length - 1 && (
+                        <div className="w-0.5 h-6 bg-gray-200" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex-1 space-y-1">
+                  {allStops.map((stop, i) => (
+                    <div key={i} className={i < allStops.length - 1 ? "pb-1" : ""}>
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{stop.label}</p>
+                      <p className="font-bold text-foreground text-sm leading-tight">{stop.name}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Teslimat</p>
-                <p className="font-bold text-foreground truncate">{load.destination}</p>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
 
         {/* Details Grid */}
