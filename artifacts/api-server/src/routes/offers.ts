@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, offersTable, loadsTable, usersTable } from "@workspace/db";
+import { db, offersTable, loadsTable, usersTable, shipmentsTable, shipmentEventsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
   ListOffersResponse,
@@ -145,6 +145,35 @@ router.post("/offers/:id/accept", async (req, res): Promise<void> => {
 
   const [driver] = await db.select().from(usersTable).where(eq(usersTable.id, offer.driverId));
   const [load] = await db.select().from(loadsTable).where(eq(loadsTable.id, offer.loadId));
+
+  // Teklif kabul edilince otomatik sevkiyat oluştur (eğer yoksa)
+  const existingShipments = await db
+    .select()
+    .from(shipmentsTable)
+    .where(eq(shipmentsTable.loadId, offer.loadId));
+
+  const hasActive = existingShipments.some(s => s.status !== "cancelled" && s.status !== "delivered");
+
+  if (!hasActive) {
+    const [newShipment] = await db
+      .insert(shipmentsTable)
+      .values({
+        loadId: offer.loadId,
+        driverId: offer.driverId,
+        status: "pickup",
+      })
+      .returning();
+
+    // İlk event kaydı
+    await db.insert(shipmentEventsTable).values({
+      shipmentId: newShipment.id,
+      event: "pickup",
+      description: "Teklif kabul edildi. Şoför yükleme noktasına yönlendiriliyor.",
+    });
+
+    // İlanı "assigned" olarak işaretle
+    await db.update(loadsTable).set({ status: "assigned" }).where(eq(loadsTable.id, offer.loadId));
+  }
 
   res.json(AcceptOfferResponse.parse(mapOffer(offer, driver, load)));
 });

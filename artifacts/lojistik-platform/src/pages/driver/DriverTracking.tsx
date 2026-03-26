@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  MapPin, Package, Clock, CheckCircle2, Truck, Navigation,
-  Phone, Star, Loader2, WifiOff, Radio,
-  PackageCheck, AlertCircle, History,
+  MapPin, Package, CheckCircle2, Truck, Navigation,
+  Loader2, WifiOff, Radio,
+  PackageCheck, History,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useListShipments } from "@workspace/api-client-react";
+import { useAuth } from "@/lib/auth-context";
 
 const STATUS_STEPS: { status: string; label: string; icon: typeof Truck }[] = [
   { status: "pickup", label: "Yükleme Noktasındayım", icon: PackageCheck },
@@ -19,8 +20,18 @@ const STATUS_STEPS: { status: string; label: string; icon: typeof Truck }[] = [
 
 type GeoStatus = "idle" | "requesting" | "tracking" | "denied" | "error";
 
+async function fetchShipments(token: string, status: string) {
+  const r = await fetch(`/api/shipments?status=${encodeURIComponent(status)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) return { shipments: [] };
+  return r.json();
+}
+
 export default function DriverTracking() {
   const { toast } = useToast();
+  const { token } = useAuth();
+  const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<"active" | "history">("active");
   const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -30,13 +41,30 @@ export default function DriverTracking() {
   const watchIdRef = useRef<number | null>(null);
   const locationSentRef = useRef<number>(0);
 
-  const { data: shipmentsData } = useListShipments({ status: "in_transit" });
-  const activeShipment = shipmentsData?.shipments?.[0] ?? null;
+  // Active shipment: status "pickup" (just assigned) OR "in_transit" (on the way)
+  const { data: activeData } = useQuery({
+    queryKey: ["shipments-active", token],
+    queryFn: () => fetchShipments(token!, "pickup,in_transit"),
+    enabled: !!token,
+    refetchInterval: 30_000,
+  });
+  const activeShipment = (activeData?.shipments ?? [])[0] ?? null;
 
-  const { data: deliveredData, isLoading: deliveredLoading } = useListShipments({ status: "delivered" });
+  // Sync UI status with actual shipment status
+  useEffect(() => {
+    if (activeShipment?.status) {
+      setActiveShipmentStatus(activeShipment.status);
+    }
+  }, [activeShipment]);
+
+  const { data: deliveredData, isLoading: deliveredLoading } = useQuery({
+    queryKey: ["shipments-delivered", token],
+    queryFn: () => fetchShipments(token!, "delivered"),
+    enabled: !!token,
+  });
   const deliveredShipments = deliveredData?.shipments ?? [];
   const now = new Date();
-  const thisMonthCount = deliveredShipments.filter(s => {
+  const thisMonthCount = deliveredShipments.filter((s: any) => {
     const d = new Date(s.createdAt);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;
@@ -61,7 +89,7 @@ export default function DriverTracking() {
           locationSentRef.current = now;
           fetch(`/api/shipments/${activeShipment.id}/location`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify({ lat: latitude, lng: longitude }),
           }).catch(() => {/* ignore */});
         }
@@ -101,12 +129,16 @@ export default function DriverTracking() {
     try {
       const res = await fetch(`/api/shipments/${activeShipment.id}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status, description: label, ...(coords ? { lat: coords.lat, lng: coords.lng } : {}) }),
       });
       if (!res.ok) throw new Error(await res.text());
       setActiveShipmentStatus(status);
       toast({ title: "Durum Güncellendi", description: `${label} bilgisi kaydedildi.` });
+      qc.invalidateQueries({ queryKey: ["shipments-active"] });
+      if (status === "delivered") {
+        qc.invalidateQueries({ queryKey: ["shipments-delivered"] });
+      }
     } catch {
       toast({ title: "Güncelleme Başarısız", description: "Lütfen tekrar deneyin.", variant: "destructive" });
     } finally {
@@ -327,7 +359,7 @@ export default function DriverTracking() {
               </div>
             )}
 
-            {!deliveredLoading && deliveredShipments.map(s => {
+            {!deliveredLoading && deliveredShipments.map((s: any) => {
               const loadLabel = s.load
                 ? (s.load.origin && s.load.destination
                     ? `${s.load.origin} → ${s.load.destination}`

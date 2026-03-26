@@ -1,9 +1,26 @@
 import { Router, type IRouter } from "express";
-import { db, shipmentsTable, shipmentEventsTable, loadsTable, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import type { Request } from "express";
+import { db, shipmentsTable, shipmentEventsTable, loadsTable, usersTable, userSessionsTable } from "@workspace/db";
+import { eq, and, gt } from "drizzle-orm";
 import { ListShipmentsResponse, GetShipmentResponse } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+async function getAuthUser(req: Request): Promise<{ id: number; role: string } | null> {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  if (!token) return null;
+  const now = new Date();
+  const [session] = await db
+    .select()
+    .from(userSessionsTable)
+    .where(and(eq(userSessionsTable.token, token), gt(userSessionsTable.expiresAt, now)));
+  if (!session) return null;
+  const [user] = await db
+    .select({ id: usersTable.id, role: usersTable.role })
+    .from(usersTable)
+    .where(eq(usersTable.id, session.userId));
+  return user ?? null;
+}
 
 function mapShipment(
   shipment: typeof shipmentsTable.$inferSelect,
@@ -57,11 +74,29 @@ function mapShipment(
 }
 
 router.get("/shipments", async (req, res): Promise<void> => {
-  const { status } = req.query;
+  const { status, driverId: driverIdParam } = req.query;
+
+  // Auth-aware filtering: if a driver is logged in, show only their shipments
+  const authUser = await getAuthUser(req);
+  const isDriver = authUser && (authUser.role === "driver" || authUser.role === "individual");
+
   const allShipments = await db.select().from(shipmentsTable).orderBy(shipmentsTable.createdAt);
-  const filtered = status && typeof status === "string"
-    ? allShipments.filter((s) => s.status === status)
-    : allShipments;
+
+  let filtered = allShipments;
+
+  // Filter by driverId: if driver is logged in → their own; if driverIdParam given → by param
+  if (isDriver) {
+    filtered = filtered.filter((s) => s.driverId === authUser!.id);
+  } else if (driverIdParam && typeof driverIdParam === "string") {
+    const dId = parseInt(driverIdParam, 10);
+    if (!isNaN(dId)) filtered = filtered.filter((s) => s.driverId === dId);
+  }
+
+  if (status && typeof status === "string") {
+    // Support comma-separated statuses: "pickup,in_transit"
+    const statuses = status.split(",").map(s => s.trim());
+    filtered = filtered.filter((s) => statuses.includes(s.status));
+  }
 
   const allUsers = await db.select().from(usersTable);
   const userMap = new Map(allUsers.map((u) => [u.id, u]));
