@@ -194,7 +194,7 @@ export default function DriverFeed() {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen pb-20">
+    <div className="bg-gray-50 min-h-full">
       {/* Search Header */}
       <div className="bg-primary px-4 pt-4 pb-6 rounded-b-3xl shadow-md">
         <h1 className="text-xl font-bold text-white mb-4">Sana Uygun Yükler</h1>

@@ -32,22 +32,23 @@ export function AppLayout({ children }: AppLayoutProps) {
   // Driver uses a mobile-first bottom navigation layout
   if (role === "driver") {
     return (
-      <div className="min-h-screen bg-gray-50 flex justify-center pb-20">
-        <div className="w-full max-w-md bg-white min-h-screen shadow-2xl overflow-x-hidden relative">
-          <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b px-4 py-3 flex items-center justify-between">
+      <div className="min-h-screen bg-gray-100 flex justify-center">
+        {/* Phone-shell card: on mobile fills screen, on larger screens is centered max-w-md */}
+        <div className="w-full max-w-md bg-white min-h-screen shadow-2xl overflow-x-hidden relative flex flex-col">
+          <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-8 w-8 object-contain" />
               <span className="font-display font-bold text-lg text-primary">TaşıYo</span>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Link href="/driver/destek">
-                <Button variant="ghost" size="sm" className="text-xs text-gray-600 gap-1 px-2">
+                <Button variant="ghost" size="sm" className="text-xs text-gray-600 gap-1 px-2 h-8">
                   <HeadphonesIcon className="h-4 w-4" />
-                  Destek
+                  <span className="hidden xs:inline">Destek</span>
                 </Button>
               </Link>
-              <Button variant="ghost" size="icon" className="relative rounded-full">
-                <Bell className="h-5 w-5 text-gray-600" />
+              <Button variant="ghost" size="icon" className="relative rounded-full h-8 w-8">
+                <Bell className="h-4 w-4 text-gray-600" />
                 <span className="absolute top-1 right-1 h-2 w-2 bg-accent rounded-full border-2 border-white"></span>
               </Button>
               <DropdownMenu>
@@ -70,12 +71,14 @@ export function AppLayout({ children }: AppLayoutProps) {
               </DropdownMenu>
             </div>
           </header>
-          
-          <main className="pb-6">
+
+          {/* Scrollable content area, clears the fixed bottom nav */}
+          <main className="flex-1 overflow-y-auto pb-20">
             {children}
           </main>
 
-          <nav className="fixed bottom-0 w-full max-w-md bg-white border-t border-gray-200 flex justify-around items-center py-2 px-2 pb-safe z-50">
+          {/* Bottom nav: fixed but centered to align with the max-w-md shell */}
+          <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 flex justify-around items-center pt-2 pb-3 px-2 z-50">
             <DriverNavItem href="/driver" icon={HomeIcon} label="Ana Sayfa" active={location === "/driver"} />
             <DriverNavItem href="/driver/loads" icon={Search} label="Yükler" active={location === "/driver/loads"} />
             <div className="relative -top-5">
