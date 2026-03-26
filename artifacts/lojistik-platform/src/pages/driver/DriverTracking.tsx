@@ -151,8 +151,10 @@ export default function DriverTracking() {
   }, [activeShipment?.timeline]);
 
   const currentStepIdx = useMemo(() => {
-    const idx = steps.findIndex((s) => !completedEvents.has(s.event));
-    return idx === -1 ? steps.length : idx; // hepsi tamamlandıysa
+    // isInfo adımları (Sefer Atandı) her zaman tamamlanmış sayılır;
+    // ilk gerçek tıklanabilir adım daima "Yükleme" olur.
+    const idx = steps.findIndex((s) => !s.isInfo && !completedEvents.has(s.event));
+    return idx === -1 ? steps.length : idx;
   }, [steps, completedEvents]);
 
   // ─── GPS ─────────────────────────────────────────────────────────────────────
@@ -396,21 +398,15 @@ export default function DriverTracking() {
                       const isNext = !isDone && !isCurrent;
 
                       if (step.isInfo) {
+                        // Bilgi adımı daima "tamamlandı" görünür — asıl ilk adım Yükleme'dir
                         return (
                           <div
                             key={step.event}
-                            className={`flex items-center gap-3 p-3 rounded-xl border ${
-                              isDone
-                                ? "bg-green-50 border-green-100 text-green-700"
-                                : "bg-blue-50 border-blue-100 text-blue-700"
-                            }`}
+                            className="flex items-center gap-3 p-3 rounded-xl border bg-green-50 border-green-100 text-green-700"
                           >
-                            {isDone
-                              ? <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
-                              : <Info className="w-5 h-5 text-blue-500 shrink-0 animate-pulse" />}
+                            <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
                             <span className="text-sm font-medium">{step.label}</span>
-                            {isDone && <Badge className="ml-auto text-xs bg-green-100 text-green-700 border-0">Tamamlandı</Badge>}
-                            {!isDone && <Badge className="ml-auto text-xs bg-blue-100 text-blue-700 border-0">Aktif</Badge>}
+                            <Badge className="ml-auto text-xs bg-green-100 text-green-700 border-0">Tamamlandı</Badge>
                           </div>
                         );
                       }
