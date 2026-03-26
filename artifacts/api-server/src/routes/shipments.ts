@@ -76,18 +76,30 @@ function mapShipment(
 router.get("/shipments", async (req, res): Promise<void> => {
   const { status, driverId: driverIdParam } = req.query;
 
-  // Auth-aware filtering: if a driver is logged in, show only their shipments
+  // Auth-aware filtering
   const authUser = await getAuthUser(req);
   const isDriver = authUser && (authUser.role === "driver" || authUser.role === "individual");
+  const isCorporate = authUser && authUser.role === "corporate";
 
   const allShipments = await db.select().from(shipmentsTable).orderBy(shipmentsTable.createdAt);
+  const allUsers = await db.select().from(usersTable);
+  const userMap = new Map(allUsers.map((u) => [u.id, u]));
+  const allLoads = await db.select().from(loadsTable);
+  const loadMap = new Map(allLoads.map((l) => [l.id, l]));
 
   let filtered = allShipments;
 
-  // Filter by driverId: if driver is logged in → their own; if driverIdParam given → by param
+  // Driver → only their own shipments
   if (isDriver) {
     filtered = filtered.filter((s) => s.driverId === authUser!.id);
-  } else if (driverIdParam && typeof driverIdParam === "string") {
+  }
+  // Corporate → only shipments for their own loads (postedById = corporate user id)
+  else if (isCorporate) {
+    const ownLoadIds = new Set(allLoads.filter(l => l.postedById === authUser!.id).map(l => l.id));
+    filtered = filtered.filter((s) => ownLoadIds.has(s.loadId));
+  }
+  // driverIdParam fallback (admin/public use)
+  else if (driverIdParam && typeof driverIdParam === "string") {
     const dId = parseInt(driverIdParam, 10);
     if (!isNaN(dId)) filtered = filtered.filter((s) => s.driverId === dId);
   }
@@ -97,11 +109,6 @@ router.get("/shipments", async (req, res): Promise<void> => {
     const statuses = status.split(",").map(s => s.trim());
     filtered = filtered.filter((s) => statuses.includes(s.status));
   }
-
-  const allUsers = await db.select().from(usersTable);
-  const userMap = new Map(allUsers.map((u) => [u.id, u]));
-  const allLoads = await db.select().from(loadsTable);
-  const loadMap = new Map(allLoads.map((l) => [l.id, l]));
   const allEvents = await db.select().from(shipmentEventsTable);
   const eventsMap = new Map<number, (typeof shipmentEventsTable.$inferSelect)[]>();
   for (const e of allEvents) {
