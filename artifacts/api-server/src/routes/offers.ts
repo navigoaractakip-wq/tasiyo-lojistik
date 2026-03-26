@@ -168,4 +168,47 @@ router.post("/offers/:id/reject", async (req, res): Promise<void> => {
   res.json(RejectOfferResponse.parse(mapOffer(offer, driver, load)));
 });
 
+// POST /offers/:id/withdraw — Driver geri çekme: yalnızca teklif sahibi, yalnızca "pending" durumunda
+router.post("/offers/:id/withdraw", optionalAuth, async (req: AuthRequest, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = parseInt(raw, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Geçersiz teklif ID" }); return; }
+
+  if (!req.userId) {
+    res.status(401).json({ error: "Bu işlem için giriş yapmalısınız." });
+    return;
+  }
+
+  const [existing] = await db.select().from(offersTable).where(eq(offersTable.id, id));
+  if (!existing) { res.status(404).json({ error: "Teklif bulunamadı." }); return; }
+
+  if (existing.driverId !== req.userId) {
+    res.status(403).json({ error: "Yalnızca kendi teklifinizi geri çekebilirsiniz." });
+    return;
+  }
+
+  if (existing.status !== "pending") {
+    res.status(409).json({ error: "Yalnızca beklemedeki teklifler geri çekilebilir." });
+    return;
+  }
+
+  const [offer] = await db
+    .update(offersTable)
+    .set({ status: "withdrawn" })
+    .where(eq(offersTable.id, id))
+    .returning();
+
+  // offersCount'u bir azalt (sıfırın altına düşme)
+  const [currentLoad] = await db.select().from(loadsTable).where(eq(loadsTable.id, existing.loadId));
+  if (currentLoad) {
+    const newCount = Math.max(0, (currentLoad.offersCount ?? 1) - 1);
+    await db.update(loadsTable).set({ offersCount: newCount }).where(eq(loadsTable.id, existing.loadId));
+  }
+
+  const [driver] = await db.select().from(usersTable).where(eq(usersTable.id, offer.driverId));
+  const [load] = await db.select().from(loadsTable).where(eq(loadsTable.id, offer.loadId));
+
+  res.json(mapOffer(offer, driver, load));
+});
+
 export default router;

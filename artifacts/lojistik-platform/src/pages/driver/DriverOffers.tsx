@@ -1,13 +1,21 @@
 import { useState } from "react";
-import { useListOffers } from "@workspace/api-client-react";
+import { useListOffers, getListOffersQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import {
   MapPin, Clock, CheckCircle2, XCircle, Hourglass,
   Loader2, FileText, TrendingUp, TrendingDown, Minus,
+  Undo2, AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
 
 type Tab = "pending" | "history";
 
@@ -31,25 +39,42 @@ function StatusBadge({ status }: { status: string }) {
           <XCircle className="w-3 h-3" /> Reddedildi
         </Badge>
       );
+    case "withdrawn":
+      return (
+        <Badge className="bg-gray-100 text-gray-500 border-gray-200 gap-1 font-semibold">
+          <Undo2 className="w-3 h-3" /> Geri Çekildi
+        </Badge>
+      );
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
 }
 
-function OfferCard({ offer }: { offer: any }) {
+function OfferCard({ offer, onWithdraw }: { offer: any; onWithdraw?: (id: string) => void }) {
   const load = offer.load;
   const isPending = offer.status === "pending";
   const isAccepted = offer.status === "accepted";
+  const isWithdrawn = offer.status === "withdrawn";
+
+  const headerClass = isAccepted
+    ? "bg-green-50 border-b border-green-100"
+    : isPending
+    ? "bg-amber-50 border-b border-amber-100"
+    : isWithdrawn
+    ? "bg-gray-50 border-b border-gray-100"
+    : "bg-red-50 border-b border-red-100";
+
+  const ringClass = isAccepted
+    ? "ring-1 ring-green-200"
+    : isPending
+    ? "ring-1 ring-amber-200"
+    : "";
 
   return (
-    <Card className={`shadow-sm border-0 overflow-hidden ${isAccepted ? "ring-1 ring-green-200" : isPending ? "ring-1 ring-amber-200" : ""}`}>
+    <Card className={`shadow-sm border-0 overflow-hidden ${ringClass}`}>
       <CardContent className="p-0">
         {/* Status bar */}
-        <div className={`px-4 py-2 flex items-center justify-between ${
-          isAccepted ? "bg-green-50 border-b border-green-100" :
-          isPending ? "bg-amber-50 border-b border-amber-100" :
-          "bg-red-50 border-b border-red-100"
-        }`}>
+        <div className={`px-4 py-2 flex items-center justify-between ${headerClass}`}>
           <StatusBadge status={offer.status} />
           <span className="text-xs text-muted-foreground">
             {format(new Date(offer.createdAt), "d MMM yyyy, HH:mm", { locale: tr })}
@@ -87,7 +112,9 @@ function OfferCard({ offer }: { offer: any }) {
           <div className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
             <div>
               <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Teklifim</p>
-              <p className="text-xl font-bold text-primary">{offer.amount.toLocaleString("tr-TR")} ₺</p>
+              <p className={`text-xl font-bold ${isWithdrawn ? "text-gray-400 line-through" : "text-primary"}`}>
+                {offer.amount.toLocaleString("tr-TR")} ₺
+              </p>
             </div>
             {load?.price && (
               <div className="text-right">
@@ -121,6 +148,27 @@ function OfferCard({ offer }: { offer: any }) {
               Teklifiniz kabul edildi! Firma sizinle iletişime geçecek.
             </div>
           )}
+
+          {/* Withdrawn notice */}
+          {isWithdrawn && (
+            <div className="flex items-center gap-2 bg-gray-50 text-gray-500 rounded-xl px-3 py-2 text-xs font-medium">
+              <Undo2 className="w-4 h-4 shrink-0" />
+              Bu teklifinizi geri çektiniz.
+            </div>
+          )}
+
+          {/* Withdraw button — only for pending */}
+          {isPending && onWithdraw && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 rounded-xl gap-2 h-9"
+              onClick={() => onWithdraw(offer.id)}
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+              Teklifi Geri Çek
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -129,6 +177,10 @@ function OfferCard({ offer }: { offer: any }) {
 
 export default function DriverOffers() {
   const [activeTab, setActiveTab] = useState<Tab>("pending");
+  const [withdrawTarget, setWithdrawTarget] = useState<string | null>(null);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: pendingData, isLoading: pendingLoading } = useListOffers({ byMe: "true", status: "pending" });
   const { data: historyData, isLoading: historyLoading } = useListOffers({ byMe: "true" });
@@ -138,6 +190,29 @@ export default function DriverOffers() {
   const historyOffers = allOffers.filter(o => o.status !== "pending");
   const acceptedCount = allOffers.filter(o => o.status === "accepted").length;
   const rejectedCount = allOffers.filter(o => o.status === "rejected").length;
+
+  const handleWithdrawConfirm = async () => {
+    if (!withdrawTarget) return;
+    setIsWithdrawing(true);
+    try {
+      const res = await fetch(`/api/offers/${withdrawTarget}/withdraw`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Teklif geri çekilemedi.");
+      }
+      toast({ title: "Teklif geri çekildi", description: "Teklifiniz başarıyla iptal edildi." });
+      queryClient.invalidateQueries({ queryKey: getListOffersQueryKey({ byMe: "true" }) });
+      queryClient.invalidateQueries({ queryKey: getListOffersQueryKey({ byMe: "true", status: "pending" }) });
+    } catch (e: any) {
+      toast({ title: "Hata", description: e.message, variant: "destructive" });
+    } finally {
+      setIsWithdrawing(false);
+      setWithdrawTarget(null);
+    }
+  };
 
   return (
     <div className="bg-gray-50 min-h-screen pb-24">
@@ -194,7 +269,11 @@ export default function DriverOffers() {
               </div>
             ) : (
               pendingOffers.map((offer: any) => (
-                <OfferCard key={offer.id} offer={offer} />
+                <OfferCard
+                  key={offer.id}
+                  offer={offer}
+                  onWithdraw={setWithdrawTarget}
+                />
               ))
             )}
           </>
@@ -244,6 +323,47 @@ export default function DriverOffers() {
           </>
         )}
       </div>
+
+      {/* Withdraw Confirmation Dialog */}
+      <Dialog open={!!withdrawTarget} onOpenChange={open => !open && setWithdrawTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <DialogTitle>Teklifi Geri Çek</DialogTitle>
+            </div>
+            <DialogDescription className="text-sm text-muted-foreground">
+              Bu teklifi geri çekmek istediğinizden emin misiniz?
+              Geri çekilen teklifler <strong>yeniden aktifleştirilemez</strong>.
+              Aynı ilana yeni bir teklif verebilirsiniz.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setWithdrawTarget(null)}
+              disabled={isWithdrawing}
+              className="flex-1"
+            >
+              Vazgeç
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleWithdrawConfirm}
+              disabled={isWithdrawing}
+              className="flex-1"
+            >
+              {isWithdrawing ? (
+                <><Loader2 className="w-4 h-4 animate-spin mr-2" /> İşleniyor…</>
+              ) : (
+                <><Undo2 className="w-4 h-4 mr-2" /> Geri Çek</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
