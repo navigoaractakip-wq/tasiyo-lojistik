@@ -7,6 +7,7 @@ import { PlatformProvider } from "@/lib/platform-context";
 import { AppLayout } from "@/components/layout/AppLayout";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
+import DisclaimerModal from "@/components/ui/DisclaimerModal";
 
 // Auth
 import Login from "@/pages/Login";
@@ -227,6 +228,7 @@ function App() {
         <PlatformProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <AuthProvider>
+              <DisclaimerModal />
               <Router />
             </AuthProvider>
           </WouterRouter>
