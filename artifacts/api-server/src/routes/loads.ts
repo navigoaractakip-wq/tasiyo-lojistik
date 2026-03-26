@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, loadsTable, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql, and, isNotNull } from "drizzle-orm";
 import {
   ListLoadsResponse,
   CreateLoadBody,
@@ -118,6 +118,80 @@ router.post("/loads", optionalAuth, async (req: AuthRequest, res): Promise<void>
   }
 
   res.status(201).json(GetLoadResponse.parse(mapLoad(load, poster)));
+});
+
+// GET /loads/nearby?lat=41.0&lng=28.9&radius=25&status=active
+// IMPORTANT: must be registered BEFORE /loads/:id so Express doesn't treat "nearby" as an id
+router.get("/loads/nearby", async (req, res): Promise<void> => {
+  const lat = parseFloat(req.query.lat as string);
+  const lng = parseFloat(req.query.lng as string);
+  const radius = Math.min(parseFloat(req.query.radius as string) || 25, 200);
+  const status = (req.query.status as string) || "active";
+
+  if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    res.status(400).json({ error: "Geçersiz koordinat. lat ve lng gereklidir." });
+    return;
+  }
+
+  const distanceExpr = sql<number>`
+    (6371 * acos(
+      LEAST(1.0, GREATEST(-1.0,
+        cos(radians(${lat})) * cos(radians(${loadsTable.originLat}))
+        * cos(radians(${loadsTable.originLng}) - radians(${lng}))
+        + sin(radians(${lat})) * sin(radians(${loadsTable.originLat}))
+      ))
+    ))
+  `;
+
+  const rows = await db
+    .select({
+      id: loadsTable.id,
+      title: loadsTable.title,
+      origin: loadsTable.origin,
+      destination: loadsTable.destination,
+      vehicleType: loadsTable.vehicleType,
+      loadType: loadsTable.loadType,
+      pricingModel: loadsTable.pricingModel,
+      price: loadsTable.price,
+      weight: loadsTable.weight,
+      status: loadsTable.status,
+      originLat: loadsTable.originLat,
+      originLng: loadsTable.originLng,
+      pickupDate: loadsTable.pickupDate,
+      createdAt: loadsTable.createdAt,
+      distanceKm: distanceExpr,
+    })
+    .from(loadsTable)
+    .where(
+      and(
+        eq(loadsTable.status, status),
+        isNotNull(loadsTable.originLat),
+        isNotNull(loadsTable.originLng),
+        sql`${distanceExpr} <= ${radius}`
+      )
+    )
+    .orderBy(distanceExpr)
+    .limit(50);
+
+  const loads = rows.map((r) => ({
+    id: String(r.id),
+    title: r.title,
+    origin: r.origin,
+    destination: r.destination,
+    vehicleType: r.vehicleType,
+    loadType: r.loadType,
+    pricingModel: r.pricingModel,
+    price: r.price ?? undefined,
+    weight: r.weight ?? undefined,
+    status: r.status,
+    originLat: r.originLat ?? undefined,
+    originLng: r.originLng ?? undefined,
+    pickupDate: r.pickupDate ?? undefined,
+    createdAt: r.createdAt,
+    distanceKm: Math.round((r.distanceKm as number) * 10) / 10,
+  }));
+
+  res.json({ loads, total: loads.length, radiusKm: radius, lat, lng });
 });
 
 router.get("/loads/:id", async (req, res): Promise<void> => {
