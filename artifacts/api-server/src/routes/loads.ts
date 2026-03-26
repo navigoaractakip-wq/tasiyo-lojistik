@@ -275,8 +275,8 @@ router.patch("/loads/:id", optionalAuth, async (req: AuthRequest, res): Promise<
   if (parsed.data.loadType !== undefined) updates.loadType = parsed.data.loadType;
   if (parsed.data.vehicleType !== undefined) updates.vehicleType = parsed.data.vehicleType;
   if (parsed.data.pricingModel !== undefined) updates.pricingModel = parsed.data.pricingModel;
-  if (parsed.data.pickupDate !== undefined) updates.pickupDate = parsed.data.pickupDate;
-  if (parsed.data.deliveryDate !== undefined) updates.deliveryDate = parsed.data.deliveryDate;
+  if (parsed.data.pickupDate !== undefined) updates.pickupDate = new Date(parsed.data.pickupDate);
+  if (parsed.data.deliveryDate !== undefined) updates.deliveryDate = new Date(parsed.data.deliveryDate);
 
   const [load] = await db.update(loadsTable).set(updates).where(eq(loadsTable.id, id)).returning();
   if (!load) {
