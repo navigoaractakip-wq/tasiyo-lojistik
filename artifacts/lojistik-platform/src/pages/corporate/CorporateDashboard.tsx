@@ -1,19 +1,30 @@
 import { useListLoads, useListOffers, useAcceptOffer, useRejectOffer } from "@workspace/api-client-react";
+import type { Load } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Link } from "wouter";
 import {
   Plus, Package, MessageSquare, TrendingUp, Truck,
-  CheckCircle2, XCircle, AlertCircle, Loader2,
+  CheckCircle2, XCircle, AlertCircle, Loader2, Trash2,
 } from "lucide-react";
 import { LoadCard } from "@/components/ui/LoadCard";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function CorporateDashboard() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  const qc = useQueryClient();
 
   // Only the current user's active loads
   const { data: loadsData, isLoading: loadsLoading } = useListLoads({ status: "active", mine: "true" });
@@ -23,6 +34,8 @@ export default function CorporateDashboard() {
   const { data: acceptedOffersData } = useListOffers({ status: "accepted", mine: "true" });
 
   const [dismissed, setDismissed] = useState<Record<string, "accepted" | "rejected">>({});
+  const [deletingLoad, setDeletingLoad] = useState<Load | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const { mutate: acceptOffer } = useAcceptOffer();
   const { mutate: rejectOffer } = useRejectOffer();
@@ -41,6 +54,29 @@ export default function CorporateDashboard() {
       onSuccess: () => toast({ title: "Teklif Reddedildi" }),
       onError: () => toast({ title: "Teklif Reddedildi" }),
     });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingLoad || !token) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/loads/${deletingLoad.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast({ title: "Silinemedi", description: body.error ?? "Bir hata oluştu.", variant: "destructive" });
+        return;
+      }
+      toast({ title: "İlan Silindi", description: `"${deletingLoad.title}" başarıyla silindi.` });
+      qc.invalidateQueries({ queryKey: ["loads"] });
+      setDeletingLoad(null);
+    } catch {
+      toast({ title: "Silinemedi", description: "Lütfen tekrar deneyin.", variant: "destructive" });
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const myLoads = loadsData?.loads ?? [];
@@ -138,7 +174,12 @@ export default function CorporateDashboard() {
           ) : (
             <div className="grid gap-4">
               {myLoads.map((load: any) => (
-                <LoadCard key={load.id} load={load} viewMode="corporate" />
+                <LoadCard
+                  key={load.id}
+                  load={load}
+                  viewMode="corporate"
+                  onDelete={(l) => setDeletingLoad(l)}
+                />
               ))}
             </div>
           )}
@@ -219,6 +260,33 @@ export default function CorporateDashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deletingLoad} onOpenChange={(open) => { if (!open) setDeletingLoad(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" /> İlanı Sil
+            </DialogTitle>
+            <DialogDescription>
+              <span className="font-medium text-foreground">"{deletingLoad?.title}"</span> ilanını silmek istediğinizden emin misiniz?
+              Bu işlem geri alınamaz.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" disabled={deleteLoading} onClick={() => setDeletingLoad(null)}>
+              İptal
+            </Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteLoading}
+              onClick={handleDeleteConfirm}
+            >
+              {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Evet, Sil"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

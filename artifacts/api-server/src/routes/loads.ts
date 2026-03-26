@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, loadsTable, usersTable } from "@workspace/db";
+import { db, loadsTable, usersTable, offersTable } from "@workspace/db";
 import { eq, sql, and, isNotNull } from "drizzle-orm";
 import {
   ListLoadsResponse,
@@ -285,17 +285,46 @@ router.patch("/loads/:id", optionalAuth, async (req: AuthRequest, res): Promise<
   res.json(UpdateLoadResponse.parse(mapLoad(load)));
 });
 
-router.delete("/loads/:id", async (req, res): Promise<void> => {
+router.delete("/loads/:id", optionalAuth, async (req: AuthRequest, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
   if (isNaN(id)) {
-    res.status(400).json({ error: "Invalid id" });
+    res.status(400).json({ error: "Geçersiz ilan ID." });
+    return;
+  }
+
+  const requesterId = req.userId;
+  if (!requesterId) {
+    res.status(401).json({ error: "Yetkisiz erişim." });
+    return;
+  }
+
+  const [load] = await db.select().from(loadsTable).where(eq(loadsTable.id, id));
+  if (!load) {
+    res.status(404).json({ error: "İlan bulunamadı." });
+    return;
+  }
+
+  const isAdmin = req.userRole === "admin";
+  if (!isAdmin && load.postedById !== requesterId) {
+    res.status(403).json({ error: "Bu ilanı silme yetkiniz yok." });
+    return;
+  }
+
+  // Block deletion if there is an accepted offer
+  const acceptedOffers = await db
+    .select({ id: offersTable.id })
+    .from(offersTable)
+    .where(and(eq(offersTable.loadId, id), eq(offersTable.status, "accepted")));
+
+  if (acceptedOffers.length > 0) {
+    res.status(409).json({ error: "Kabul edilmiş teklif bulunan ilan silinemez." });
     return;
   }
 
   const [deleted] = await db.delete(loadsTable).where(eq(loadsTable.id, id)).returning({ id: loadsTable.id });
   if (!deleted) {
-    res.status(404).json({ error: "Load not found" });
+    res.status(404).json({ error: "İlan bulunamadı." });
     return;
   }
 

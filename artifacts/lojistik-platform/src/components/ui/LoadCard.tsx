@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Truck, ArrowRight, Calendar, Weight, Info, Pencil } from "lucide-react";
+import { MapPin, Truck, ArrowRight, Calendar, Weight, Info, Pencil, Trash2 } from "lucide-react";
 import type { Load } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -11,9 +11,12 @@ interface LoadCardProps {
   load: Load;
   viewMode?: "corporate" | "driver" | "admin";
   onAction?: (load: Load) => void;
+  onDelete?: (load: Load) => void;
 }
 
-export function LoadCard({ load, viewMode = "corporate", onAction }: LoadCardProps) {
+export function LoadCard({ load, viewMode = "corporate", onAction, onDelete }: LoadCardProps) {
+  // Load can be deleted only when no accepted offer exists (status != assigned/completed)
+  const isDeletable = onDelete && !["assigned", "completed", "cancelled"].includes(load.status);
   const getStatusColor = (status: string) => {
     switch(status) {
       case "active": return "bg-green-100 text-green-800 border-green-200";
@@ -128,6 +131,16 @@ export function LoadCard({ load, viewMode = "corporate", onAction }: LoadCardPro
           
           {viewMode === "corporate" && (
             <div className="flex items-center gap-2">
+              {isDeletable && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 gap-1.5 h-9 px-3"
+                  onClick={() => onDelete!(load)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Sil
+                </Button>
+              )}
               {(load.offersCount ?? 0) === 0 && (
                 <Link href={`/dashboard/edit-load/${load.id}`}>
                   <Button variant="ghost" size="sm" className="rounded-xl text-muted-foreground hover:text-primary gap-1.5 h-9 px-3">
