@@ -29,67 +29,179 @@ export function AppLayout({ children }: AppLayoutProps) {
   // If no role is selected, don't show the layout (Gateway page handles it)
   if (!role) return <>{children}</>;
 
-  // Driver uses a mobile-first bottom navigation layout
+  // Driver layout: mobile-shell on small screens, sidebar on desktop
   if (role === "driver") {
+    const driverLinks = [
+      { href: "/driver", label: "Ana Sayfa", icon: HomeIcon },
+      { href: "/driver/loads", label: "Yük Bul", icon: Search },
+      { href: "/driver/map", label: "Harita", icon: Map },
+      { href: "/driver/offers", label: "Tekliflerim", icon: FileText },
+      { href: "/driver/tracking", label: "Takip", icon: Truck },
+      { href: "/driver/destek", label: "Destek", icon: HeadphonesIcon },
+    ];
+
     return (
-      <div className="min-h-screen bg-gray-100 flex justify-center">
-        {/* Phone-shell card: on mobile fills screen, on larger screens is centered max-w-md */}
-        <div className="w-full max-w-md bg-white min-h-screen shadow-2xl overflow-x-hidden relative flex flex-col">
-          <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2">
-              <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-8 w-8 object-contain" />
-              <span className="font-display font-bold text-lg text-primary">TaşıYo</span>
+      <div className="min-h-screen bg-gray-100">
+
+        {/* ── DESKTOP LAYOUT (md+) ─────────────────────── */}
+        <div className="hidden md:flex min-h-screen bg-background">
+          {/* Sidebar */}
+          <aside className="w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col sticky top-0 h-screen shrink-0">
+            <div className="p-6 flex items-center gap-3">
+              <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-10 w-10 object-contain rounded-lg bg-white/15 p-0.5" />
+              <div>
+                <h1 className="font-display font-bold text-xl text-white leading-none">TaşıYo</h1>
+                <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-widest font-semibold">Şoför Paneli</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Link href="/driver/destek">
-                <Button variant="ghost" size="sm" className="text-xs text-gray-600 gap-1 px-2 h-8">
-                  <HeadphonesIcon className="h-4 w-4" />
-                  <span className="hidden xs:inline">Destek</span>
-                </Button>
-              </Link>
-              <Button variant="ghost" size="icon" className="relative rounded-full h-8 w-8">
-                <Bell className="h-4 w-4 text-gray-600" />
-                <span className="absolute top-1 right-1 h-2 w-2 bg-accent rounded-full border-2 border-white"></span>
+            <div className="px-6 pb-4">
+              <Badge variant="outline" className="w-full justify-center bg-sidebar-border border-sidebar-border/50 text-white/80 py-1">
+                Bireysel Şoför
+              </Badge>
+            </div>
+            <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto">
+              {driverLinks.map((link) => {
+                const Icon = link.icon;
+                const isActive = location === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${
+                      isActive
+                        ? "bg-accent text-white shadow-lg shadow-accent/20"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-border hover:text-white"
+                    }`}
+                  >
+                    <Icon className={`h-5 w-5 ${isActive ? "text-white" : "text-sidebar-foreground/50"}`} />
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </nav>
+            <div className="p-4 mt-auto border-t border-sidebar-border">
+              <div className="flex items-center gap-3 px-2 py-3 mb-3">
+                <Avatar className="h-10 w-10 border border-sidebar-border">
+                  <AvatarFallback className="bg-accent/20 text-accent font-bold">
+                    {user?.name ? user.name.slice(0, 2).toUpperCase() : "SF"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{user?.name ?? "Şoför"}</p>
+                  <p className="text-xs text-sidebar-foreground/60 truncate">{user?.phone ?? user?.email ?? ""}</p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-sidebar-foreground/70 hover:text-destructive hover:bg-destructive/10"
+                onClick={logout}
+              >
+                <LogOut className="mr-2 h-5 w-5" />
+                Çıkış Yap
               </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Avatar className="h-8 w-8 border border-border cursor-pointer">
-                    <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-                      {user?.name ? user.name.slice(0, 2).toUpperCase() : "SF"}
-                    </AvatarFallback>
-                  </Avatar>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  <div className="px-3 py-2 border-b">
-                    <p className="text-xs font-semibold truncate">{user?.name ?? "Şoför"}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{user?.phone ?? user?.email ?? ""}</p>
-                  </div>
-                  <DropdownMenuItem onClick={logout} className="text-red-600 gap-2 cursor-pointer">
-                    <LogOut className="w-4 h-4" /> Çıkış Yap
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
-          </header>
+          </aside>
 
-          {/* Scrollable content area, clears the fixed bottom nav */}
-          <main className="flex-1 overflow-y-auto pb-20">
-            {children}
-          </main>
-
-          {/* Bottom nav: fixed but centered to align with the max-w-md shell */}
-          <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 flex justify-around items-center pt-2 pb-3 px-2 z-50">
-            <DriverNavItem href="/driver" icon={HomeIcon} label="Ana Sayfa" active={location === "/driver"} />
-            <DriverNavItem href="/driver/loads" icon={Search} label="Yükler" active={location === "/driver/loads"} />
-            <div className="relative -top-5">
-              <Link href="/driver/map" className="flex items-center justify-center h-14 w-14 rounded-full bg-gradient-to-tr from-accent to-orange-400 text-white shadow-lg shadow-accent/40 active:scale-95 transition-transform">
-                <Map className="h-6 w-6" />
-              </Link>
+          {/* Main content */}
+          <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+            {/* Top header */}
+            <header className="flex items-center justify-between px-8 py-4 bg-background/80 backdrop-blur-xl border-b border-border sticky top-0 z-30">
+              <h2 className="text-xl font-bold font-display text-foreground">
+                {driverLinks.find((l) => l.href === location)?.label ?? "Şoför Paneli"}
+              </h2>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" size="icon" className="relative rounded-full border-border bg-background shadow-sm hover:border-accent/50">
+                  <Bell className="h-5 w-5 text-foreground/80" />
+                  <span className="absolute top-0 right-0 h-2.5 w-2.5 bg-accent rounded-full border-2 border-background"></span>
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Avatar className="h-9 w-9 border border-border cursor-pointer hover:ring-2 hover:ring-accent/30 transition-all">
+                      <AvatarFallback className="bg-accent/10 text-accent font-bold text-sm">
+                        {user?.name ? user.name.slice(0, 2).toUpperCase() : "SF"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <div className="px-3 py-2 border-b">
+                      <p className="text-sm font-semibold truncate">{user?.name ?? "Şoför"}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user?.phone ?? user?.email ?? ""}</p>
+                    </div>
+                    <DropdownMenuItem onClick={logout} className="text-red-600 gap-2 cursor-pointer">
+                      <LogOut className="w-4 h-4" /> Çıkış Yap
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </header>
+            <div className="flex-1 p-6 lg:p-8 overflow-y-auto bg-gray-50/50">
+              <div className="max-w-5xl mx-auto">
+                {children}
+              </div>
             </div>
-            <DriverNavItem href="/driver/offers" icon={FileText} label="Tekliflerim" active={location === "/driver/offers"} />
-            <DriverNavItem href="/driver/tracking" icon={Truck} label="Takip" active={location === "/driver/tracking"} />
-          </nav>
+          </div>
         </div>
+
+        {/* ── MOBILE LAYOUT (< md) ─────────────────────── */}
+        <div className="md:hidden flex justify-center bg-gray-100 min-h-screen">
+          <div className="w-full max-w-md bg-white min-h-screen shadow-2xl overflow-x-hidden relative flex flex-col">
+            {/* Mobile header */}
+            <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-8 w-8 object-contain" />
+                <span className="font-display font-bold text-lg text-primary">TaşıYo</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link href="/driver/destek">
+                  <Button variant="ghost" size="sm" className="text-xs text-gray-600 gap-1 px-2 h-8">
+                    <HeadphonesIcon className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Button variant="ghost" size="icon" className="relative rounded-full h-8 w-8">
+                  <Bell className="h-4 w-4 text-gray-600" />
+                  <span className="absolute top-1 right-1 h-2 w-2 bg-accent rounded-full border-2 border-white"></span>
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Avatar className="h-8 w-8 border border-border cursor-pointer">
+                      <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                        {user?.name ? user.name.slice(0, 2).toUpperCase() : "SF"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <div className="px-3 py-2 border-b">
+                      <p className="text-xs font-semibold truncate">{user?.name ?? "Şoför"}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{user?.phone ?? user?.email ?? ""}</p>
+                    </div>
+                    <DropdownMenuItem onClick={logout} className="text-red-600 gap-2 cursor-pointer">
+                      <LogOut className="w-4 h-4" /> Çıkış Yap
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </header>
+
+            {/* Scrollable content */}
+            <main className="flex-1 overflow-y-auto pb-20">
+              {children}
+            </main>
+
+            {/* Bottom nav */}
+            <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 flex justify-around items-center pt-2 pb-3 px-2 z-50">
+              <DriverNavItem href="/driver" icon={HomeIcon} label="Ana Sayfa" active={location === "/driver"} />
+              <DriverNavItem href="/driver/loads" icon={Search} label="Yükler" active={location === "/driver/loads"} />
+              <div className="relative -top-5">
+                <Link href="/driver/map" className="flex items-center justify-center h-14 w-14 rounded-full bg-gradient-to-tr from-accent to-orange-400 text-white shadow-lg shadow-accent/40 active:scale-95 transition-transform">
+                  <Map className="h-6 w-6" />
+                </Link>
+              </div>
+              <DriverNavItem href="/driver/offers" icon={FileText} label="Tekliflerim" active={location === "/driver/offers"} />
+              <DriverNavItem href="/driver/tracking" icon={Truck} label="Takip" active={location === "/driver/tracking"} />
+            </nav>
+          </div>
+        </div>
+
       </div>
     );
   }

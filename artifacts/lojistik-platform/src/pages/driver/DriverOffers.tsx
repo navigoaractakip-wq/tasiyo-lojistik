@@ -268,13 +268,15 @@ export default function DriverOffers() {
                 <p className="text-xs text-muted-foreground">Yük ilanlarına teklif vererek buradan takip edebilirsiniz.</p>
               </div>
             ) : (
-              pendingOffers.map((offer: any) => (
-                <OfferCard
-                  key={offer.id}
-                  offer={offer}
-                  onWithdraw={setWithdrawTarget}
-                />
-              ))
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {pendingOffers.map((offer: any) => (
+                  <OfferCard
+                    key={offer.id}
+                    offer={offer}
+                    onWithdraw={setWithdrawTarget}
+                  />
+                ))}
+              </div>
             )}
           </>
         )}
@@ -316,9 +318,11 @@ export default function DriverOffers() {
                 <p className="text-xs text-muted-foreground">Kabul edilen ve reddedilen teklifleriniz burada görünür.</p>
               </div>
             ) : (
-              historyOffers.map((offer: any) => (
-                <OfferCard key={offer.id} offer={offer} />
-              ))
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {historyOffers.map((offer: any) => (
+                  <OfferCard key={offer.id} offer={offer} />
+                ))}
+              </div>
             )}
           </>
         )}

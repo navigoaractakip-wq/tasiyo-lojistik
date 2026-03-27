@@ -216,7 +216,7 @@ export default function DriverLoads() {
       )}
 
       {/* Loads List */}
-      <div className="px-4 mt-3 space-y-3">
+      <div className="px-4 mt-3">
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
             <Loader2 className="w-5 h-5 animate-spin" /> Yükler getiriliyor…
@@ -228,7 +228,9 @@ export default function DriverLoads() {
               {search ? "Arama kriterlerine uygun ilan bulunamadı" : "Şu an aktif ilan yok"}
             </p>
           </div>
-        ) : filtered.map(load => (
+        ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {filtered.map(load => (
           <Card key={load.id} className="shadow-sm border-0 overflow-hidden">
             <CardContent className="p-0">
               {load.isPremium && (
@@ -289,6 +291,8 @@ export default function DriverLoads() {
             </CardContent>
           </Card>
         ))}
+        </div>
+        )}
       </div>
 
       <Dialog open={!!offerLoad} onOpenChange={open => !open && setOfferLoad(null)}>

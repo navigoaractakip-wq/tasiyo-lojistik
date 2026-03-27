@@ -259,8 +259,8 @@ export default function DriverFeed() {
       </div>
 
       {/* Feed list */}
-      <div className="px-4 space-y-3">
-        <div className="flex items-center justify-between mb-2">
+      <div className="px-4">
+        <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-gray-800">Aktif İlanlar</h2>
           <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-1 rounded-full">
             {loads.length} ilan
@@ -277,6 +277,7 @@ export default function DriverFeed() {
           </div>
         )}
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {loads.map(load => {
           const alreadyOffered = offeredLoadIds.has(String(load.id));
           return (
@@ -330,6 +331,7 @@ export default function DriverFeed() {
             </Card>
           );
         })}
+        </div>
       </div>
 
       <Dialog open={!!offerLoad} onOpenChange={open => !open && setOfferLoad(null)}>
