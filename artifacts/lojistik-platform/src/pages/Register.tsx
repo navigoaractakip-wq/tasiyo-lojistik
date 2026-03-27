@@ -688,9 +688,7 @@ export default function Register() {
           </AnimatePresence>
         </div>
 
-        <p className="text-center text-xs text-blue-200/50 mt-6">
-          Süper yönetici hesabı için yöneticinizle iletişime geçin.
-        </p>
+
       </div>
     </div>
   );
