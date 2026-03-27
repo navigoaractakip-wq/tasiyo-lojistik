@@ -148,6 +148,10 @@ export default function Register() {
       toast({ title: "Hata", description: "Şirket adı zorunludur.", variant: "destructive" });
       return;
     }
+    if (!form.phone.trim()) {
+      toast({ title: "Hata", description: "Telefon numarası zorunludur.", variant: "destructive" });
+      return;
+    }
     if (!validateConsents()) return;
 
     register(
@@ -155,7 +159,7 @@ export default function Register() {
         data: {
           name: form.name.trim(),
           email: form.email.trim(),
-          phone: form.phone.trim() || undefined,
+          phone: form.phone.trim(),
           role: role!,
           company: form.company.trim() || undefined,
           termsAccepted: consents.termsAccepted,
@@ -450,7 +454,7 @@ export default function Register() {
                   {/* Phone */}
                   <div className="space-y-1.5">
                     <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-                      Telefon Numarası <span className="text-gray-400 font-normal">(opsiyonel)</span>
+                      Telefon Numarası <span className="text-red-500">*</span>
                     </Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -459,6 +463,7 @@ export default function Register() {
                         type="tel"
                         className="pl-9"
                         placeholder="+90 555 123 4567"
+                        required
                         value={form.phone}
                         onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                       />
