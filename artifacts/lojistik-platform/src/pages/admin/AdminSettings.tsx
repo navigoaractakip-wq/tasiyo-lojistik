@@ -105,9 +105,11 @@ function SecretInput({
 function LogoUploadField({
   value,
   onChange,
+  dark = false,
 }: {
   value: string;
   onChange: (v: string) => void;
+  dark?: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -126,10 +128,13 @@ function LogoUploadField({
 
   return (
     <div className="flex items-center gap-4">
-      <Avatar className="h-16 w-16 border-2 border-border rounded-xl">
-        <AvatarImage src={value} className="object-contain" />
-        <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold rounded-xl">LOGO</AvatarFallback>
-      </Avatar>
+      <div className={`h-16 w-16 border-2 border-border rounded-xl flex items-center justify-center overflow-hidden ${dark ? "bg-sidebar" : "bg-gray-50"}`}>
+        {value ? (
+          <img src={value} alt="Logo önizleme" className="h-full w-full object-contain p-1" />
+        ) : (
+          <span className={`text-xs font-bold ${dark ? "text-white/50" : "text-primary/40"}`}>LOGO</span>
+        )}
+      </div>
       <div className="space-y-1">
         <Button variant="outline" size="sm" className="gap-2" onClick={() => fileRef.current?.click()}>
           <Camera className="w-4 h-4" /> Logo Seç
@@ -299,10 +304,11 @@ export default function AdminSettings() {
                   {setting.description && (
                     <p className="text-xs text-muted-foreground">{setting.description}</p>
                   )}
-                  {setting.key === "platform_logo" ? (
+                  {(setting.key === "platform_logo" || setting.key === "platform_logo_light") ? (
                     <LogoUploadField
                       value={values[setting.key] ?? ""}
                       onChange={(v) => handleChange(setting.key, v)}
+                      dark={setting.key === "platform_logo_light"}
                     />
                   ) : setting.isSecret ? (
                     <SecretInput

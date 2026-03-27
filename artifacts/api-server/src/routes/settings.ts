@@ -28,8 +28,9 @@ const DEFAULT_SETTINGS = [
   { key: "smtp_from",  label: "Gönderen Adres",    description: 'Örn: "TaşıYo <no-reply@tasiyo.com>"', group: "email", isSecret: false },
 
   // Platform
-  { key: "platform_name",    label: "Platform Adı",    description: "Platformun görünen adı (varsayılan: TaşıYo)",          group: "platform", isSecret: false },
-  { key: "platform_logo",    label: "Platform Logosu", description: "Sol üst köşede görünen platform logosu (base64 resim)", group: "platform", isSecret: false },
+  { key: "platform_name",       label: "Platform Adı",              description: "Platformun görünen adı (varsayılan: TaşıYo)",                       group: "platform", isSecret: false },
+  { key: "platform_logo",       label: "Platform Logosu (Koyu)",    description: "Açık arka planlarda kullanılan logo (base64 resim)",                group: "platform", isSecret: false },
+  { key: "platform_logo_light", label: "Platform Logosu (Açık)",    description: "Koyu/renkli arka planlarda kullanılan açık renkli logo (base64 resim)", group: "platform", isSecret: false },
   { key: "platform_support_email", label: "Destek E-posta",  description: "Kullanıcıların ulaşacağı destek adresi", group: "platform", isSecret: false },
   { key: "otp_expiry_minutes",     label: "OTP Süresi (dk)", description: "Doğrulama kodunun geçerlilik süresi",   group: "platform", isSecret: false },
   { key: "max_otp_attempts",       label: "Maks. OTP Deneme", description: "Başarısız giriş denemesi limiti",     group: "platform", isSecret: false },
@@ -74,7 +75,7 @@ router.get("/settings/public", async (req, res): Promise<void> => {
     .from(platformSettingsTable)
     .orderBy(platformSettingsTable.key);
 
-  const publicKeys = ["platform_name", "platform_logo"];
+  const publicKeys = ["platform_name", "platform_logo", "platform_logo_light"];
   const result: Record<string, string | null> = {};
   for (const row of rows) {
     if (publicKeys.includes(row.key)) {

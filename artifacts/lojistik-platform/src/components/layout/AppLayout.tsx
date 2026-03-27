@@ -48,9 +48,15 @@ export function AppLayout({ children }: AppLayoutProps) {
           {/* Sidebar */}
           <aside className="w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col sticky top-0 h-screen shrink-0">
             <div className="p-6 flex items-center gap-3">
-              <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-10 w-10 object-contain rounded-lg bg-white/15 p-0.5" />
+              {branding.logoLight ? (
+                <img src={branding.logoLight} alt="Logo" className="h-10 w-10 object-contain rounded-lg p-0.5" />
+              ) : branding.logo ? (
+                <img src={branding.logo} alt="Logo" className="h-10 w-10 object-contain rounded-lg bg-white/15 p-0.5" />
+              ) : (
+                <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-10 w-10 brightness-0 invert" />
+              )}
               <div>
-                <h1 className="font-display font-bold text-xl text-white leading-none">TaşıYo</h1>
+                <h1 className="font-display font-bold text-xl text-white leading-none">{branding.name}</h1>
                 <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-widest font-semibold">Şoför Paneli</span>
               </div>
             </div>
@@ -148,8 +154,12 @@ export function AppLayout({ children }: AppLayoutProps) {
             {/* Mobile header */}
             <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-8 w-8 object-contain" />
-                <span className="font-display font-bold text-lg text-primary">TaşıYo</span>
+                {branding.logo ? (
+                  <img src={branding.logo} alt="Logo" className="h-8 w-8 object-contain" />
+                ) : (
+                  <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-8 w-8 object-contain" />
+                )}
+                <span className="font-display font-bold text-lg text-primary">{branding.name}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Link href="/driver/destek">
@@ -233,7 +243,9 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 bg-sidebar text-sidebar-foreground border-b border-sidebar-border sticky top-0 z-50">
         <div className="flex items-center gap-2">
-          {branding.logo ? (
+          {branding.logoLight ? (
+            <img src={branding.logoLight} alt="Logo" className="h-8 w-8 object-contain rounded-md p-0.5" />
+          ) : branding.logo ? (
             <img src={branding.logo} alt="Logo" className="h-8 w-8 object-contain rounded-md bg-white/15 p-0.5" />
           ) : (
             <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-8 w-8 brightness-0 invert" />
@@ -252,7 +264,9 @@ export function AppLayout({ children }: AppLayoutProps) {
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <div className="p-6 hidden md:flex items-center gap-3">
-          {branding.logo ? (
+          {branding.logoLight ? (
+            <img src={branding.logoLight} alt="Logo" className="h-10 w-10 object-contain rounded-lg p-0.5" />
+          ) : branding.logo ? (
             <img src={branding.logo} alt="Logo" className="h-10 w-10 object-contain rounded-lg bg-white/15 p-0.5" />
           ) : (
             <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-10 w-10 brightness-0 invert" />
