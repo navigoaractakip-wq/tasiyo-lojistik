@@ -108,7 +108,7 @@ export default function Login() {
       toast({
         title: is404 ? "Hesap Bulunamadı" : "Hata",
         description: is404
-          ? "Bu bilgilere ait kayıtlı hesap bulunamadı. Lütfen önce kayıt olun."
+          ? "Bu e-posta adresiyle henüz hesap oluşturulmamış. Lütfen /kayit sayfasından kayıt olun."
           : msg,
         variant: "destructive",
       });
