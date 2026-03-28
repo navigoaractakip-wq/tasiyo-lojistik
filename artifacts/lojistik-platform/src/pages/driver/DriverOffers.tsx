@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 type Tab = "pending" | "history";
 
 type TimeFilter = "today" | "week" | "month" | "year" | "3years";
+type StatusFilter = "all" | "accepted" | "rejected" | "withdrawn";
 
 const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
   { key: "today",  label: "Bugün"    },
@@ -234,6 +235,7 @@ function OfferCard({ offer, onWithdraw }: { offer: any; onWithdraw?: (id: string
 export default function DriverOffers() {
   const [activeTab, setActiveTab] = useState<Tab>("pending");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("month");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [withdrawTarget, setWithdrawTarget] = useState<string | null>(null);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const { toast } = useToast();
@@ -246,13 +248,24 @@ export default function DriverOffers() {
   const allOffers = historyData?.offers ?? [];
   const allHistoryOffers = allOffers.filter(o => o.status !== "pending");
 
-  const historyOffers = useMemo(() => {
+  // Yalnızca zaman filtresine göre
+  const timeFilteredOffers = useMemo(() => {
     const since = getFilterStart(timeFilter);
     return allHistoryOffers.filter(o => new Date(o.createdAt) >= since);
   }, [allHistoryOffers, timeFilter]);
 
-  const acceptedCount = historyOffers.filter(o => o.status === "accepted").length;
-  const rejectedCount = historyOffers.filter(o => o.status === "rejected").length;
+  // Zaman + durum filtresine göre (listede gösterilenler)
+  const displayedOffers = useMemo(() => {
+    if (statusFilter === "all") return timeFilteredOffers;
+    return timeFilteredOffers.filter(o => o.status === statusFilter);
+  }, [timeFilteredOffers, statusFilter]);
+
+  const totalCount    = timeFilteredOffers.length;
+  const acceptedCount = timeFilteredOffers.filter(o => o.status === "accepted").length;
+  const rejectedCount = timeFilteredOffers.filter(o => o.status === "rejected").length;
+
+  const toggleStatus = (s: StatusFilter) =>
+    setStatusFilter(prev => (prev === s ? "all" : s));
 
   const handleWithdrawConfirm = async () => {
     if (!withdrawTarget) return;
@@ -367,27 +380,56 @@ export default function DriverOffers() {
               </div>
             </div>
 
-            {/* Stats */}
+            {/* Stats — tıklanabilir durum filtresi */}
             {!historyLoading && allHistoryOffers.length > 0 && (
               <div className="grid grid-cols-3 gap-3 mb-1">
-                <Card className="border-0 shadow-sm">
-                  <CardContent className="p-3 text-center">
-                    <p className="text-xl font-bold text-primary">{historyOffers.length}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Toplam</p>
-                  </CardContent>
-                </Card>
-                <Card className="border-0 shadow-sm">
-                  <CardContent className="p-3 text-center">
-                    <p className="text-xl font-bold text-green-600">{acceptedCount}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Kabul</p>
-                  </CardContent>
-                </Card>
-                <Card className="border-0 shadow-sm">
-                  <CardContent className="p-3 text-center">
-                    <p className="text-xl font-bold text-red-500">{rejectedCount}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Red</p>
-                  </CardContent>
-                </Card>
+                {/* Toplam */}
+                <button
+                  onClick={() => toggleStatus("all")}
+                  className={`rounded-xl text-center p-3 shadow-sm border-2 transition-all bg-white ${
+                    statusFilter === "all"
+                      ? "border-primary ring-2 ring-primary/20"
+                      : "border-transparent hover:border-primary/30"
+                  }`}
+                >
+                  <p className="text-xl font-bold text-primary">{totalCount}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Toplam</p>
+                  {statusFilter === "all" && (
+                    <span className="mt-1 inline-block text-[10px] font-semibold text-primary bg-primary/10 rounded-full px-2 py-0.5">Aktif</span>
+                  )}
+                </button>
+
+                {/* Kabul */}
+                <button
+                  onClick={() => toggleStatus("accepted")}
+                  className={`rounded-xl text-center p-3 shadow-sm border-2 transition-all bg-white ${
+                    statusFilter === "accepted"
+                      ? "border-green-500 ring-2 ring-green-200"
+                      : "border-transparent hover:border-green-300"
+                  }`}
+                >
+                  <p className="text-xl font-bold text-green-600">{acceptedCount}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Kabul</p>
+                  {statusFilter === "accepted" && (
+                    <span className="mt-1 inline-block text-[10px] font-semibold text-green-600 bg-green-100 rounded-full px-2 py-0.5">Aktif</span>
+                  )}
+                </button>
+
+                {/* Red */}
+                <button
+                  onClick={() => toggleStatus("rejected")}
+                  className={`rounded-xl text-center p-3 shadow-sm border-2 transition-all bg-white ${
+                    statusFilter === "rejected"
+                      ? "border-red-500 ring-2 ring-red-200"
+                      : "border-transparent hover:border-red-300"
+                  }`}
+                >
+                  <p className="text-xl font-bold text-red-500">{rejectedCount}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Red</p>
+                  {statusFilter === "rejected" && (
+                    <span className="mt-1 inline-block text-[10px] font-semibold text-red-500 bg-red-100 rounded-full px-2 py-0.5">Aktif</span>
+                  )}
+                </button>
               </div>
             )}
 
@@ -395,23 +437,25 @@ export default function DriverOffers() {
               <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
                 <Loader2 className="w-5 h-5 animate-spin" /> Yükleniyor…
               </div>
-            ) : historyOffers.length === 0 ? (
+            ) : displayedOffers.length === 0 ? (
               <div className="text-center py-14 space-y-2">
                 <CalendarDays className="w-12 h-12 text-gray-200 mx-auto" />
                 <p className="font-medium text-gray-500">
                   {allHistoryOffers.length === 0
                     ? "Geçmiş teklif yok"
+                    : statusFilter !== "all"
+                    ? `${TIME_FILTERS.find(f => f.key === timeFilter)?.label} içinde ${statusFilter === "accepted" ? "kabul edilen" : "reddedilen"} teklif yok`
                     : `${TIME_FILTERS.find(f => f.key === timeFilter)?.label} döneminde teklif yok`}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {allHistoryOffers.length === 0
                     ? "Kabul edilen ve reddedilen teklifleriniz burada görünür."
-                    : "Farklı bir zaman aralığı seçebilirsiniz."}
+                    : "Farklı bir zaman aralığı veya durum seçebilirsiniz."}
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {historyOffers.map((offer: any) => (
+                {displayedOffers.map((offer: any) => (
                   <OfferCard
                     key={offer.id}
                     offer={offer}
