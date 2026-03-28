@@ -1059,6 +1059,11 @@ export const GetAdminStatsResponse = zod.object({
       value: zod.number(),
     }),
   ),
+  driverCount: zod.number().optional(),
+  corporateCount: zod.number().optional(),
+  individualCount: zod.number().optional(),
+  newUsersThisWeek: zod.number().optional(),
+  newLoadsThisWeek: zod.number().optional(),
 });
 
 /**

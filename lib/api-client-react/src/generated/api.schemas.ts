@@ -328,6 +328,11 @@ export interface AdminStats {
   activeVehicles: number;
   revenueChart: ChartDataPoint[];
   shipmentsChart: ChartDataPoint[];
+  driverCount?: number;
+  corporateCount?: number;
+  individualCount?: number;
+  newUsersThisWeek?: number;
+  newLoadsThisWeek?: number;
 }
 
 export interface Message {
