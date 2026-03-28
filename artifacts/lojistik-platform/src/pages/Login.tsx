@@ -103,8 +103,15 @@ export default function Login() {
         toast({ title: "Hata", description: res.message, variant: "destructive" });
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "Bir hata oluştu.";
-      toast({ title: "Hata", description: msg, variant: "destructive" });
+      const msg = err?.data?.message || err?.message || "Bir hata oluştu.";
+      const is404 = err?.status === 404;
+      toast({
+        title: is404 ? "Hesap Bulunamadı" : "Hata",
+        description: is404
+          ? "Bu bilgilere ait kayıtlı hesap bulunamadı. Lütfen önce kayıt olun."
+          : msg,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -130,7 +137,7 @@ export default function Login() {
         toast({ title: "Hata", description: res.message, variant: "destructive" });
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.message || "Kod hatalı veya süresi dolmuş.";
+      const msg = err?.data?.message || err?.message || "Kod hatalı veya süresi dolmuş.";
       toast({ title: "Doğrulama Hatası", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);

@@ -214,7 +214,7 @@ export default function Register() {
 
     setVerifying(true);
     try {
-      const res = await fetch("/api/auth/verify-otp", {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier, identifierType, code: otp }),
