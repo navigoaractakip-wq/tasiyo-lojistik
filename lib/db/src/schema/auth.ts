@@ -8,6 +8,8 @@ export const otpCodesTable = pgTable("otp_codes", {
   identifierType: text("identifier_type").notNull(),
   code: text("code").notNull(),
   isUsed: boolean("is_used").notNull().default(false),
+  sentVia: text("sent_via"),
+  userLabel: text("user_label"),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

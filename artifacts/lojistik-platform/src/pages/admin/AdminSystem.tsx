@@ -1,11 +1,28 @@
+import { useState, useEffect, useCallback } from "react";
 import { useGetSettings } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ShieldAlert, Server, Database, Wifi, CheckCircle2, AlertTriangle,
-  Globe, Lock, Activity, Zap, RefreshCw, Loader2,
+  Globe, Lock, Activity, Zap, RefreshCw, Loader2, KeyRound, Copy, Check,
+  Mail, Phone,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { useToast } from "@/hooks/use-toast";
+
+type PendingOtp = {
+  id: number;
+  identifier: string;
+  identifierType: string;
+  code: string;
+  userLabel: string | null;
+  expiresAt: string;
+  createdAt: string;
+};
+
+const BASE = (import.meta.env.BASE_URL + "api/").replace(/\/+/g, "/").replace(":/", "://");
+function apiUrl(path: string) { return BASE + path; }
 
 type ServiceStatus = "healthy" | "warning" | "error";
 
@@ -17,6 +34,39 @@ const STATUS_CONFIG = {
 
 export default function AdminSystem() {
   const { data: settingsData, isLoading, refetch, isFetching } = useGetSettings();
+  const { token } = useAuth();
+  const { toast } = useToast();
+  const [pendingOtps, setPendingOtps] = useState<PendingOtp[]>([]);
+  const [otpsLoading, setOtpsLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+
+  const fetchPendingOtps = useCallback(async () => {
+    if (!token) return;
+    setOtpsLoading(true);
+    try {
+      const res = await fetch(apiUrl("admin/pending-otps"), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPendingOtps(data.otps ?? []);
+      }
+    } catch {}
+    setOtpsLoading(false);
+  }, [token]);
+
+  useEffect(() => {
+    fetchPendingOtps();
+    const interval = setInterval(fetchPendingOtps, 30000);
+    return () => clearInterval(interval);
+  }, [fetchPendingOtps]);
+
+  function copyCode(id: number, code: string) {
+    navigator.clipboard.writeText(code).catch(() => {});
+    setCopiedId(id);
+    toast({ title: "Kopyalandı", description: `OTP kodu panoya kopyalandı: ${code}` });
+    setTimeout(() => setCopiedId(null), 2000);
+  }
 
   const settings = settingsData?.settings ?? [];
   const get = (key: string) => settings.find(s => s.key === key)?.value;
@@ -192,7 +242,7 @@ export default function AdminSystem() {
                   <div className={`mt-3 flex items-center gap-2 text-xs font-semibold ${smtpConfigured ? "text-green-600" : "text-yellow-600"}`}>
                     {smtpConfigured
                       ? <><CheckCircle2 className="w-4 h-4" /> E-posta servisi aktif</>
-                      : <><AlertTriangle className="w-4 h-4" /> Yapılandırılmamış — OTP'ler konsola yazılıyor</>
+                      : <><AlertTriangle className="w-4 h-4" /> Yapılandırılmamış — E-posta OTP'leri admin panelinde görünür</>
                     }
                   </div>
                 </div>
@@ -224,13 +274,97 @@ export default function AdminSystem() {
                   <div className={`mt-3 flex items-center gap-2 text-xs font-semibold ${twilioConfigured ? "text-green-600" : "text-yellow-600"}`}>
                     {twilioConfigured
                       ? <><CheckCircle2 className="w-4 h-4" /> SMS servisi aktif</>
-                      : <><AlertTriangle className="w-4 h-4" /> Yapılandırılmamış — OTP'ler konsola yazılıyor</>
+                      : <><AlertTriangle className="w-4 h-4" /> Yapılandırılmamış — Telefon OTP'leri admin panelinde görünür</>
                     }
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* ─── Bekleyen OTP Kodları ─── */}
+          <Card className={`shadow-sm border-2 ${pendingOtps.length > 0 ? "border-orange-300 bg-orange-50/30" : "border-border"}`}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <KeyRound className={`w-5 h-5 ${pendingOtps.length > 0 ? "text-orange-500" : "text-muted-foreground"}`} />
+                  <div>
+                    <CardTitle className="text-base">
+                      Bekleyen Doğrulama Kodları
+                      {pendingOtps.length > 0 && (
+                        <Badge className="ml-2 bg-orange-500 text-white text-xs">{pendingOtps.length}</Badge>
+                      )}
+                    </CardTitle>
+                    <CardDescription className="mt-0.5">
+                      SMS/E-posta yapılandırılmamış olduğunda OTP kodları burada görünür
+                    </CardDescription>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={fetchPendingOtps}
+                  disabled={otpsLoading}
+                  className="gap-1.5 text-xs h-8"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${otpsLoading ? "animate-spin" : ""}`} />
+                  Yenile
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {otpsLoading && pendingOtps.length === 0 ? (
+                <div className="flex items-center justify-center py-6 text-muted-foreground gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Yükleniyor…
+                </div>
+              ) : pendingOtps.length === 0 ? (
+                <div className="flex items-center gap-3 py-4 text-sm text-muted-foreground">
+                  <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                  <span>Bekleyen kod yok. Tüm OTP'ler SMS/e-posta yoluyla iletildi.</span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingOtps.map(otp => {
+                    const expiresAt = new Date(otp.expiresAt);
+                    const remaining = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000 / 60));
+                    return (
+                      <div key={otp.id} className="flex items-center justify-between bg-white border border-orange-200 rounded-xl px-4 py-3 gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`p-1.5 rounded-full ${otp.identifierType === "phone" ? "bg-blue-100" : "bg-purple-100"}`}>
+                            {otp.identifierType === "phone"
+                              ? <Phone className="w-3.5 h-3.5 text-blue-600" />
+                              : <Mail className="w-3.5 h-3.5 text-purple-600" />
+                            }
+                          </div>
+                          <div className="min-w-0">
+                            {otp.userLabel && <p className="text-sm font-semibold text-gray-800 truncate">{otp.userLabel}</p>}
+                            <p className="text-xs text-muted-foreground truncate">{otp.identifier}</p>
+                            <p className="text-xs text-orange-600 mt-0.5">Son {remaining} dakika</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-mono text-2xl font-bold tracking-widest text-gray-900 bg-gray-100 px-3 py-1 rounded-lg">
+                            {otp.code}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => copyCode(otp.id, otp.code)}
+                          >
+                            {copiedId === otp.id
+                              ? <Check className="w-4 h-4 text-green-500" />
+                              : <Copy className="w-4 h-4 text-muted-foreground" />
+                            }
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Platform Config */}
           <Card className="shadow-sm">

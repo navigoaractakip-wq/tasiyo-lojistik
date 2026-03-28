@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, loadsTable, shipmentsTable, offersTable } from "@workspace/db";
+import { db, usersTable, loadsTable, shipmentsTable, offersTable, otpCodesTable } from "@workspace/db";
 import { GetAdminStatsResponse } from "@workspace/api-zod";
-import { eq, and, gte, lt, sql } from "drizzle-orm";
+import { eq, and, gte, lt, sql, isNull, gt } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -136,6 +136,35 @@ router.get("/admin/stats", async (_req, res): Promise<void> => {
   };
 
   res.json(GetAdminStatsResponse.parse(stats));
+});
+
+// GET /admin/pending-otps — Teslim edilemeyen (sentVia=null) ve süresi dolmamış OTP'leri döner
+router.get("/admin/pending-otps", async (_req, res): Promise<void> => {
+  const now = new Date();
+  const rows = await db
+    .select()
+    .from(otpCodesTable)
+    .where(
+      and(
+        isNull(otpCodesTable.sentVia),
+        eq(otpCodesTable.isUsed, false),
+        gt(otpCodesTable.expiresAt, now)
+      )
+    )
+    .orderBy(otpCodesTable.createdAt);
+
+  res.json({
+    otps: rows.map((r) => ({
+      id: r.id,
+      identifier: r.identifier,
+      identifierType: r.identifierType,
+      code: r.code,
+      userLabel: r.userLabel ?? null,
+      expiresAt: r.expiresAt,
+      createdAt: r.createdAt,
+    })),
+    total: rows.length,
+  });
 });
 
 export default router;

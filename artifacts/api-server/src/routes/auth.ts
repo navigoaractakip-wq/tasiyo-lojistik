@@ -118,12 +118,11 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const code = generateOtp();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-  await db.insert(otpCodesTable).values({ identifier, identifierType, code, expiresAt });
-
-  let channel = "console";
+  // Önce gönder, sonra sonuca göre sentVia kaydet
+  let sentVia: string | null = null;
   if (identifierType === "phone") {
     const sent = await sendSms(identifier, `TaşıYo doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir.`);
-    channel = sent ? "sms" : "console";
+    sentVia = sent ? "sms" : null;
   } else {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
@@ -136,22 +135,24 @@ router.post("/auth/register", async (req, res): Promise<void> => {
         <p style="color:#6b7280; font-size:0.9rem;">Bu kod 10 dakika geçerlidir.</p>
       </div>`;
     const sent = await sendEmail(identifier, "TaşıYo — Hesabınız Oluşturuldu", html);
-    channel = sent ? "email" : "console";
+    sentVia = sent ? "email" : null;
   }
 
-  if (channel === "console") {
-    console.log(`\n🔐 [OTP - KAYIT] ${identifier} → KOD: ${code}\n`);
+  await db.insert(otpCodesTable).values({ identifier, identifierType, code, expiresAt, sentVia, userLabel: name.trim() });
+
+  if (!sentVia) {
+    console.log(`\n🔐 [OTP - KAYIT] ${identifier} → KOD: ${code} (Admin panelinde görüntülenebilir)\n`);
   }
 
   res.json(
     RegisterResponse.parse({
       success: true,
-      message: channel === "console"
-        ? "Hesabınız oluşturuldu. SMTP/SMS yapılandırılmadığı için kod aşağıda gösteriliyor."
-        : `Doğrulama kodu ${channel === "sms" ? "telefonunuza" : "e-postanıza"} gönderildi.`,
+      message: sentVia
+        ? `Doğrulama kodu ${sentVia === "sms" ? "telefonunuza" : "e-postanıza"} gönderildi.`
+        : "Hesabınız oluşturuldu. Doğrulama kodu yönetim panelinde görüntülenebilir.",
       identifier,
       identifierType,
-      devCode: channel === "console" ? code : undefined,
+      devCode: !sentVia ? code : undefined,
     })
   );
 });
@@ -198,20 +199,14 @@ router.post("/auth/send-otp", async (req, res): Promise<void> => {
       )
     );
 
-  await db.insert(otpCodesTable).values({
-    identifier,
-    identifierType,
-    code,
-    expiresAt,
-  });
-
-  let channel = "console";
+  // Önce gönder, sonra sonuca göre sentVia kaydet
+  let sentVia2: string | null = null;
   if (identifierType === "phone") {
     const sent = await sendSms(
       identifier,
       `TaşıYo doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir.`
     );
-    channel = sent ? "sms" : "console";
+    sentVia2 = sent ? "sms" : null;
   } else {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
@@ -221,21 +216,23 @@ router.post("/auth/send-otp", async (req, res): Promise<void> => {
         <p style="color: #6b7280; font-size: 14px;">Bu kod 10 dakika geçerlidir. Paylaşmayın.</p>
       </div>`;
     const sent = await sendEmail(identifier, "TaşıYo — Giriş Doğrulama Kodu", html);
-    channel = sent ? "email" : "console";
+    sentVia2 = sent ? "email" : null;
   }
 
-  if (channel === "console") {
-    console.log(`\n🔐 [OTP - GİRİŞ] ${identifier} → KOD: ${code}\n`);
+  await db.insert(otpCodesTable).values({ identifier, identifierType, code, expiresAt, sentVia: sentVia2, userLabel: user.name });
+
+  if (!sentVia2) {
+    console.log(`\n🔐 [OTP - GİRİŞ] ${identifier} → KOD: ${code} (Admin panelinde görüntülenebilir)\n`);
   }
 
   res.json(
     SendOtpResponse.parse({
       success: true,
-      message: channel === "console"
-        ? "SMTP/SMS yapılandırılmadığı için kod aşağıda gösteriliyor."
+      message: !sentVia2
+        ? "Doğrulama kodu yönetim panelinde görüntülenebilir."
         : `Doğrulama kodu ${identifierType === "phone" ? "telefonunuza" : "e-postanıza"} gönderildi.`,
-      channel,
-      devCode: channel === "console" ? code : undefined,
+      channel: sentVia2 ?? "admin_panel",
+      devCode: !sentVia2 ? code : undefined,
     })
   );
 });
@@ -364,10 +361,14 @@ router.post("/auth/send-phone-otp", async (req, res): Promise<void> => {
   await db.update(otpCodesTable).set({ isUsed: true }).where(and(eq(otpCodesTable.identifier, user.phone), eq(otpCodesTable.identifierType, "phone"), eq(otpCodesTable.isUsed, false)));
   await db.insert(otpCodesTable).values({ identifier: user.phone, identifierType: "phone", code, expiresAt });
 
-  const sent = await sendSms(user.phone, `TaşıYo telefon doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir.`);
-  if (!sent) console.log(`\n🔐 [OTP - TELEFON DOĞRULAMA] ${user.phone} → KOD: ${code}\n`);
+  const smsSent = await sendSms(user.phone, `TaşıYo telefon doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir.`);
+  const sentVia3 = smsSent ? "sms" : null;
+  // sentVia'yı OTP kaydına ekle (invalidate + insert zaten yapıldı, şimdi update et)
+  await db.update(otpCodesTable).set({ sentVia: sentVia3, userLabel: user.name }).where(and(eq(otpCodesTable.identifier, user.phone!), eq(otpCodesTable.identifierType, "phone"), eq(otpCodesTable.code, code)));
 
-  res.json({ success: true, message: sent ? "Doğrulama kodu telefonunuza gönderildi." : "SMTP/SMS yapılandırılmadığı için kod konsolda gösteriliyor.", devCode: !sent ? code : undefined });
+  if (!smsSent) console.log(`\n🔐 [OTP - TELEFON DOĞRULAMA] ${user.phone} → KOD: ${code} (Admin panelinde görüntülenebilir)\n`);
+
+  res.json({ success: true, message: smsSent ? "Doğrulama kodu telefonunuza gönderildi." : "Doğrulama kodu yönetim panelinde görüntülenebilir.", devCode: !smsSent ? code : undefined });
 });
 
 // POST /auth/verify-phone — Telefon OTP'yi doğrula ve isPhoneVerified = true yap
