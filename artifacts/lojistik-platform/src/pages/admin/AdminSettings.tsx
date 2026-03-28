@@ -187,8 +187,13 @@ export default function AdminSettings() {
   const { mutate: doTestSms, isPending: isTestingSms } = useTestSms({
     mutation: {
       onSuccess: (data) => {
+        const title = data.success
+          ? "SMS Gönderildi"
+          : data.message.includes("yapılandırılmamış")
+            ? "Yapılandırılmamış"
+            : "SMS Gönderilemedi";
         toast({
-          title: data.success ? "SMS Gönderildi" : "Yapılandırılmamış",
+          title,
           description: data.message,
           variant: data.success ? "default" : "destructive",
         });
@@ -199,8 +204,13 @@ export default function AdminSettings() {
   const { mutate: doTestEmail, isPending: isTestingEmail } = useTestEmail({
     mutation: {
       onSuccess: (data) => {
+        const title = data.success
+          ? "E-posta Gönderildi"
+          : data.message.includes("yapılandırılmamış")
+            ? "Yapılandırılmamış"
+            : "E-posta Gönderilemedi";
         toast({
-          title: data.success ? "E-posta Gönderildi" : "Yapılandırılmamış",
+          title,
           description: data.message,
           variant: data.success ? "default" : "destructive",
         });
