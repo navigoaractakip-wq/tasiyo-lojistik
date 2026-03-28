@@ -1,13 +1,13 @@
 import { Router, type IRouter } from "express";
 import { db, offersTable, loadsTable, usersTable, shipmentsTable, shipmentEventsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import {
   ListOffersResponse,
   CreateOfferBody,
   AcceptOfferResponse,
   RejectOfferResponse,
 } from "@workspace/api-zod";
-import { optionalAuth, type AuthRequest } from "../lib/auth-middleware";
+import { optionalAuth, requireAuth, type AuthRequest } from "../lib/auth-middleware";
 
 const router: IRouter = Router();
 
@@ -197,7 +197,7 @@ router.post("/offers/:id/reject", async (req, res): Promise<void> => {
   res.json(RejectOfferResponse.parse(mapOffer(offer, driver, load)));
 });
 
-// POST /offers/:id/withdraw — Driver geri çekme: yalnızca teklif sahibi, yalnızca "pending" durumunda
+// POST /offers/:id/withdraw — Driver geri çekme: pending veya accepted teklifler
 router.post("/offers/:id/withdraw", optionalAuth, async (req: AuthRequest, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const id = parseInt(raw, 10);
@@ -216,10 +216,12 @@ router.post("/offers/:id/withdraw", optionalAuth, async (req: AuthRequest, res):
     return;
   }
 
-  if (existing.status !== "pending") {
-    res.status(409).json({ error: "Yalnızca beklemedeki teklifler geri çekilebilir." });
+  if (existing.status !== "pending" && existing.status !== "accepted") {
+    res.status(409).json({ error: "Bu teklif geri çekilemez." });
     return;
   }
+
+  const wasAccepted = existing.status === "accepted";
 
   const [offer] = await db
     .update(offersTable)
@@ -227,8 +229,29 @@ router.post("/offers/:id/withdraw", optionalAuth, async (req: AuthRequest, res):
     .where(eq(offersTable.id, id))
     .returning();
 
-  // offersCount'u bir azalt (sıfırın altına düşme)
   const [currentLoad] = await db.select().from(loadsTable).where(eq(loadsTable.id, existing.loadId));
+
+  if (wasAccepted && currentLoad) {
+    // Yük durumunu tekrar "active" yap
+    await db.update(loadsTable)
+      .set({ status: "active" })
+      .where(eq(loadsTable.id, existing.loadId));
+
+    // Aktif sevkiyatı iptal et
+    const activeShipments = await db.select().from(shipmentsTable)
+      .where(and(eq(shipmentsTable.loadId, existing.loadId), eq(shipmentsTable.driverId, existing.driverId)));
+    for (const shipment of activeShipments) {
+      if (shipment.status !== "cancelled" && shipment.status !== "delivered") {
+        await db.update(shipmentsTable).set({ status: "cancelled" }).where(eq(shipmentsTable.id, shipment.id));
+        await db.insert(shipmentEventsTable).values({
+          shipmentId: shipment.id,
+          event: "cancelled",
+          description: "Şoför teklifi geri çekti. Yük tekrar aktif ilanlara alındı.",
+        });
+      }
+    }
+  }
+
   if (currentLoad) {
     const newCount = Math.max(0, (currentLoad.offersCount ?? 1) - 1);
     await db.update(loadsTable).set({ offersCount: newCount }).where(eq(loadsTable.id, existing.loadId));
@@ -238,6 +261,69 @@ router.post("/offers/:id/withdraw", optionalAuth, async (req: AuthRequest, res):
   const [load] = await db.select().from(loadsTable).where(eq(loadsTable.id, offer.loadId));
 
   res.json(mapOffer(offer, driver, load));
+});
+
+// POST /offers/:id/cancel-accepted — Kurumsal üye kabul ettiği teklifi iptal eder (yükleme gününe 1 gün kala)
+router.post("/offers/:id/cancel-accepted", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const id = parseInt(raw, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Geçersiz teklif ID" }); return; }
+
+  const [existing] = await db.select().from(offersTable).where(eq(offersTable.id, id));
+  if (!existing) { res.status(404).json({ error: "Teklif bulunamadı." }); return; }
+
+  if (existing.status !== "accepted") {
+    res.status(409).json({ error: "Yalnızca kabul edilmiş teklifler iptal edilebilir." });
+    return;
+  }
+
+  const [currentLoad] = await db.select().from(loadsTable).where(eq(loadsTable.id, existing.loadId));
+  if (!currentLoad) { res.status(404).json({ error: "İlan bulunamadı." }); return; }
+
+  // Kullanıcının bu ilanın sahibi olup olmadığını kontrol et
+  if (currentLoad.postedById !== req.userId) {
+    res.status(403).json({ error: "Bu teklifi iptal etme yetkiniz yok." });
+    return;
+  }
+
+  // Yükleme tarihine 1 günden az kaldıysa iptal edilemez
+  if (currentLoad.pickupDate) {
+    const msRemaining = new Date(currentLoad.pickupDate).getTime() - Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    if (msRemaining < oneDayMs) {
+      res.status(409).json({ error: "Yükleme tarihine 1 günden az kaldığı için teklif iptal edilemez." });
+      return;
+    }
+  }
+
+  // Teklifi "pending" durumuna geri al (load tekrar teklif alabilsin)
+  const [offer] = await db
+    .update(offersTable)
+    .set({ status: "pending" })
+    .where(eq(offersTable.id, id))
+    .returning();
+
+  // Yükü tekrar "active" yap
+  await db.update(loadsTable).set({ status: "active" }).where(eq(loadsTable.id, existing.loadId));
+
+  // Aktif sevkiyatı iptal et
+  const activeShipments = await db.select().from(shipmentsTable)
+    .where(and(eq(shipmentsTable.loadId, existing.loadId), eq(shipmentsTable.driverId, existing.driverId)));
+  for (const shipment of activeShipments) {
+    if (shipment.status !== "cancelled" && shipment.status !== "delivered") {
+      await db.update(shipmentsTable).set({ status: "cancelled" }).where(eq(shipmentsTable.id, shipment.id));
+      await db.insert(shipmentEventsTable).values({
+        shipmentId: shipment.id,
+        event: "cancelled",
+        description: "Kurumsal üye teklip kabulünü geri aldı. Yük tekrar teklif almaya açıldı.",
+      });
+    }
+  }
+
+  const [driver] = await db.select().from(usersTable).where(eq(usersTable.id, offer.driverId));
+  const [load] = await db.select().from(loadsTable).where(eq(loadsTable.id, offer.loadId));
+
+  res.json({ success: true, offer: mapOffer(offer, driver, load) });
 });
 
 export default router;

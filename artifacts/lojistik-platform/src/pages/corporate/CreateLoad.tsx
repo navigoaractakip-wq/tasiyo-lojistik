@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import {
-  MapPin, Truck, Calendar, DollarSign, Scale, FileText, Plus, X, ArrowDown,
+  MapPin, Truck, Calendar, DollarSign, Scale, FileText, Plus, X, ArrowDown, Clock, Link,
 } from "lucide-react";
 
 const formSchema = z.object({
@@ -24,6 +24,8 @@ const formSchema = z.object({
   pricingModel: z.enum(["fixed", "bidding"]),
   price: z.coerce.number().optional(),
   pickupDate: z.string().min(1, "Yükleme tarihi seçin"),
+  pickupTime: z.string().optional(),
+  pickupMapUrl: z.string().url("Geçerli bir URL girin (https://...)").optional().or(z.literal("")),
   deliveryDate: z.string().optional(),
   description: z.string().optional(),
 });
@@ -94,6 +96,8 @@ export default function CreateLoad() {
           waypoints,
           pickupDate: values.pickupDate || undefined,
           deliveryDate: values.deliveryDate || undefined,
+          pickupTime: values.pickupTime || undefined,
+          pickupMapUrl: values.pickupMapUrl || undefined,
         } as any,
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/loads"] });
@@ -254,6 +258,23 @@ export default function CreateLoad() {
 
                 <FormField
                   control={form.control}
+                  name="pickupTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Yükleme Saati <span className="text-muted-foreground font-normal">(opsiyonel)</span></FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <Input type="time" className="pl-10 rounded-xl h-12" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="deliveryDate"
                   render={({ field }) => (
                     <FormItem>
@@ -262,6 +283,28 @@ export default function CreateLoad() {
                         <div className="relative">
                           <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-accent" />
                           <Input type="date" className="pl-10 rounded-xl h-12 border-accent/30 focus-visible:ring-accent" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="pickupMapUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Google Maps Yükleme Noktası <span className="text-muted-foreground font-normal">(opsiyonel)</span></FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                          <Input
+                            type="url"
+                            placeholder="https://maps.google.com/..."
+                            className="pl-10 rounded-xl h-12"
+                            {...field}
+                          />
                         </div>
                       </FormControl>
                       <FormMessage />

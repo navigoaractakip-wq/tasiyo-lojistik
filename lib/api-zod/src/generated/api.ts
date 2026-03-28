@@ -349,6 +349,8 @@ export const ListLoadsResponse = zod.object({
       originLng: zod.number().optional(),
       destLat: zod.number().optional(),
       destLng: zod.number().optional(),
+      pickupTime: zod.string().optional(),
+      pickupMapUrl: zod.string().optional(),
     }),
   ),
   total: zod.number(),
@@ -373,6 +375,8 @@ export const CreateLoadBody = zod.object({
   pickupDate: zod.coerce.date().optional(),
   deliveryDate: zod.coerce.date().optional(),
   waypoints: zod.string().optional(),
+  pickupTime: zod.string().optional(),
+  pickupMapUrl: zod.string().optional(),
 });
 
 /**
@@ -421,6 +425,8 @@ export const GetLoadResponse = zod.object({
   originLng: zod.number().optional(),
   destLat: zod.number().optional(),
   destLng: zod.number().optional(),
+  pickupTime: zod.string().optional(),
+  pickupMapUrl: zod.string().optional(),
 });
 
 /**
@@ -446,6 +452,8 @@ export const UpdateLoadBody = zod.object({
   deliveryDate: zod.string().optional(),
   price: zod.number().optional(),
   isPremium: zod.boolean().optional(),
+  pickupTime: zod.string().optional(),
+  pickupMapUrl: zod.string().optional(),
 });
 
 export const UpdateLoadResponse = zod.object({
@@ -487,6 +495,8 @@ export const UpdateLoadResponse = zod.object({
   originLng: zod.number().optional(),
   destLat: zod.number().optional(),
   destLng: zod.number().optional(),
+  pickupTime: zod.string().optional(),
+  pickupMapUrl: zod.string().optional(),
 });
 
 /**

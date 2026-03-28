@@ -48,6 +48,8 @@ function mapLoad(load: typeof loadsTable.$inferSelect, poster?: typeof usersTabl
     destLat: load.destLat ?? undefined,
     destLng: load.destLng ?? undefined,
     waypoints: load.waypoints ?? undefined,
+    pickupTime: load.pickupTime ?? undefined,
+    pickupMapUrl: load.pickupMapUrl ?? undefined,
   };
 }
 
@@ -110,6 +112,8 @@ router.post("/loads", optionalAuth, async (req: AuthRequest, res): Promise<void>
       destLng: 32.8597 + (Math.random() - 0.5) * 10,
       postedById: req.userId ?? null,
       waypoints: (d as any).waypoints ?? null,
+      pickupTime: d.pickupTime ?? null,
+      pickupMapUrl: d.pickupMapUrl ?? null,
     })
     .returning();
 
@@ -277,6 +281,8 @@ router.patch("/loads/:id", optionalAuth, async (req: AuthRequest, res): Promise<
   if (parsed.data.pricingModel !== undefined) updates.pricingModel = parsed.data.pricingModel;
   if (parsed.data.pickupDate !== undefined) updates.pickupDate = new Date(parsed.data.pickupDate);
   if (parsed.data.deliveryDate !== undefined) updates.deliveryDate = new Date(parsed.data.deliveryDate);
+  if (parsed.data.pickupTime !== undefined) updates.pickupTime = parsed.data.pickupTime;
+  if (parsed.data.pickupMapUrl !== undefined) updates.pickupMapUrl = parsed.data.pickupMapUrl;
 
   const [load] = await db.update(loadsTable).set(updates).where(eq(loadsTable.id, id)).returning();
   if (!load) {

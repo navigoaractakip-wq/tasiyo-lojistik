@@ -157,16 +157,20 @@ function OfferCard({ offer, onWithdraw }: { offer: any; onWithdraw?: (id: string
             </div>
           )}
 
-          {/* Withdraw button — only for pending */}
-          {isPending && onWithdraw && (
+          {/* Withdraw button — pending veya accepted */}
+          {(isPending || isAccepted) && onWithdraw && (
             <Button
               variant="outline"
               size="sm"
-              className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 rounded-xl gap-2 h-9"
+              className={`w-full rounded-xl gap-2 h-9 ${
+                isAccepted
+                  ? "border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300"
+                  : "border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              }`}
               onClick={() => onWithdraw(offer.id)}
             >
               <Undo2 className="w-3.5 h-3.5" />
-              Teklifi Geri Çek
+              {isAccepted ? "Kabul Edilmiş Teklifi Geri Çek" : "Teklifi Geri Çek"}
             </Button>
           )}
         </div>
@@ -321,7 +325,11 @@ export default function DriverOffers() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {historyOffers.map((offer: any) => (
-                  <OfferCard key={offer.id} offer={offer} />
+                  <OfferCard
+                    key={offer.id}
+                    offer={offer}
+                    onWithdraw={offer.status === "accepted" ? setWithdrawTarget : undefined}
+                  />
                 ))}
               </div>
             )}
@@ -341,8 +349,12 @@ export default function DriverOffers() {
             </div>
             <DialogDescription className="text-sm text-muted-foreground">
               Bu teklifi geri çekmek istediğinizden emin misiniz?
-              Geri çekilen teklifler <strong>yeniden aktifleştirilemez</strong>.
-              Aynı ilana yeni bir teklif verebilirsiniz.
+              {(() => {
+                const offer = [...(pendingOffers as any[]), ...(historyOffers as any[])].find((o: any) => o.id === withdrawTarget);
+                return offer?.status === "accepted"
+                  ? " Kabul edilmiş teklif geri çekilirse yük ilanı tekrar aktif duruma geçer."
+                  : " Geri çekilen teklifler yeniden aktifleştirilemez. Aynı ilana yeni bir teklif verebilirsiniz.";
+              })()}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 mt-2">
