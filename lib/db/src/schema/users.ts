@@ -18,6 +18,7 @@ export const usersTable = pgTable("users", {
   vehiclePlate: text("vehicle_plate"),
   isPhoneVerified: boolean("is_phone_verified").notNull().default(false),
   notificationSettings: text("notification_settings"),
+  billingInfo: text("billing_info"),
   rating: real("rating").default(5.0),
   totalShipments: integer("total_shipments").default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

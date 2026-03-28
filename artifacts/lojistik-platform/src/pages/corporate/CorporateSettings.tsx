@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Building2, Bell, CreditCard, Shield, Save, Loader2,
   Mail, Phone, MapPin, Globe, Camera, CheckCircle2, AlertTriangle, Truck,
+  Receipt, Landmark, Hash,
 } from "lucide-react";
 
 const VEHICLE_OPTIONS = [
@@ -56,6 +57,15 @@ export default function CorporateSettings() {
   const [logoPreview, setLogoPreview] = useState<string>("");
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<NotifState>(DEFAULT_NOTIF);
+  const [billing, setBilling] = useState({
+    invoiceTitle: "",
+    taxOffice: "",
+    billingAddress: "",
+    billingEmail: "",
+    iban: "",
+    bankName: "",
+    bankBranch: "",
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -79,6 +89,14 @@ export default function CorporateSettings() {
       try {
         const parsed = JSON.parse(user.notificationSettings);
         setNotifications(prev => ({ ...prev, ...parsed }));
+      } catch {
+        /* ignore */
+      }
+    }
+    if (user.billingInfo) {
+      try {
+        const parsed = JSON.parse(user.billingInfo);
+        setBilling(prev => ({ ...prev, ...parsed }));
       } catch {
         /* ignore */
       }
@@ -136,6 +154,7 @@ export default function CorporateSettings() {
         taxNumber: profile.taxNumber || undefined,
         vehicleTypes: JSON.stringify(selectedVehicles),
         notificationSettings: JSON.stringify(notifications),
+        billingInfo: JSON.stringify(billing),
       },
     });
   };
@@ -281,6 +300,148 @@ export default function CorporateSettings() {
                   onChange={e => setProfile(p => ({ ...p, address: e.target.value }))}
                   placeholder="İl, İlçe, Sokak..."
                 />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Billing Info */}
+      <Card className="shadow-sm">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-emerald-600" />
+            <CardTitle className="text-lg">Fatura Bilgileri</CardTitle>
+          </div>
+          <CardDescription>
+            E-fatura ve resmi yazışmalar için kullanılacak bilgileri girin
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Fatura Unvanı */}
+            <div className="space-y-1.5 md:col-span-2">
+              <Label className="font-medium">
+                Fatura Unvanı
+                <span className="text-xs text-muted-foreground font-normal ml-2">(Yasal ticaret unvanı)</span>
+              </Label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  value={billing.invoiceTitle}
+                  onChange={e => setBilling(p => ({ ...p, invoiceTitle: e.target.value }))}
+                  placeholder="Şirketin resmi ticaret unvanı"
+                />
+              </div>
+            </div>
+
+            {/* Vergi No & Vergi Dairesi */}
+            <div className="space-y-1.5">
+              <Label className="font-medium">Vergi Numarası</Label>
+              <div className="relative">
+                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  value={profile.taxNumber}
+                  onChange={e => setProfile(p => ({ ...p, taxNumber: e.target.value }))}
+                  placeholder="0000000000"
+                  maxLength={11}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-medium">Vergi Dairesi</Label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  value={billing.taxOffice}
+                  onChange={e => setBilling(p => ({ ...p, taxOffice: e.target.value }))}
+                  placeholder="Örn: Kadıköy Vergi Dairesi"
+                />
+              </div>
+            </div>
+
+            {/* Fatura Adresi */}
+            <div className="space-y-1.5 md:col-span-2">
+              <Label className="font-medium">
+                Fatura Adresi
+                <span className="text-xs text-muted-foreground font-normal ml-2">(Şirket adresinden farklıysa)</span>
+              </Label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  value={billing.billingAddress}
+                  onChange={e => setBilling(p => ({ ...p, billingAddress: e.target.value }))}
+                  placeholder="İl, İlçe, Mahalle, Sokak, No..."
+                />
+              </div>
+            </div>
+
+            {/* Fatura E-postası */}
+            <div className="space-y-1.5 md:col-span-2">
+              <Label className="font-medium">Fatura E-postası</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  type="email"
+                  value={billing.billingEmail}
+                  onChange={e => setBilling(p => ({ ...p, billingEmail: e.target.value }))}
+                  placeholder="fatura@sirketiniz.com"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Elektronik faturalar bu adrese gönderilecektir</p>
+            </div>
+          </div>
+
+          <Separator className="my-2" />
+
+          {/* Banka Bilgileri */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Landmark className="w-4 h-4 text-blue-600" />
+              <p className="text-sm font-semibold">Banka Bilgileri</p>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="font-medium">Banka Adı</Label>
+                <Input
+                  value={billing.bankName}
+                  onChange={e => setBilling(p => ({ ...p, bankName: e.target.value }))}
+                  placeholder="Örn: Ziraat Bankası"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="font-medium">Şube</Label>
+                <Input
+                  value={billing.bankBranch}
+                  onChange={e => setBilling(p => ({ ...p, bankBranch: e.target.value }))}
+                  placeholder="Şube adı veya kodu (isteğe bağlı)"
+                />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label className="font-medium">IBAN</Label>
+                <div className="relative">
+                  <Input
+                    value={billing.iban}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/\s/g, "").toUpperCase();
+                      const formatted = raw.match(/.{1,4}/g)?.join(" ") ?? raw;
+                      setBilling(p => ({ ...p, iban: formatted }));
+                    }}
+                    placeholder="TR00 0000 0000 0000 0000 0000 00"
+                    className="font-mono tracking-wider"
+                    maxLength={32}
+                  />
+                </div>
+                {billing.iban && !/^TR\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}$/.test(billing.iban.replace(/\s/g, "")) && (
+                  <p className="text-xs text-amber-600 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Geçerli bir Türkiye IBAN'ı girin (TR ile başlamalı, 26 hane)
+                  </p>
+                )}
               </div>
             </div>
           </div>

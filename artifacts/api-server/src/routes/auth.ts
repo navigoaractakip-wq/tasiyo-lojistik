@@ -42,6 +42,7 @@ function mapUser(u: typeof usersTable.$inferSelect) {
     vehiclePlate: u.vehiclePlate ?? undefined,
     isPhoneVerified: u.isPhoneVerified ?? false,
     notificationSettings: u.notificationSettings ?? undefined,
+    billingInfo: u.billingInfo ?? undefined,
     rating: u.rating ?? undefined,
     totalShipments: u.totalShipments ?? undefined,
     createdAt: u.createdAt,

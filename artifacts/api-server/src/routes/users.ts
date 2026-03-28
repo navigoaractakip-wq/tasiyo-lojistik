@@ -152,6 +152,7 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
   if (parsed.data.vehicleTypes !== undefined) updates.vehicleTypes = parsed.data.vehicleTypes;
   if (parsed.data.vehiclePlate !== undefined) updates.vehiclePlate = parsed.data.vehiclePlate;
   if (parsed.data.notificationSettings !== undefined) updates.notificationSettings = parsed.data.notificationSettings;
+  if (parsed.data.billingInfo !== undefined) updates.billingInfo = parsed.data.billingInfo;
 
   const [user] = await db
     .update(usersTable)
@@ -181,6 +182,7 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
       vehiclePlate: user.vehiclePlate ?? undefined,
       isPhoneVerified: user.isPhoneVerified ?? false,
       notificationSettings: user.notificationSettings ?? undefined,
+      billingInfo: user.billingInfo ?? undefined,
       createdAt: user.createdAt,
     })
   );

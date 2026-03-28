@@ -29,6 +29,7 @@ export interface AuthUser {
   rating?: number | null;
   totalShipments?: number | null;
   createdAt?: string | null;
+  billingInfo?: string | null;
 }
 
 interface AuthContextType {
@@ -81,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         rating: (data as { rating?: number }).rating ?? null,
         totalShipments: (data as { totalShipments?: number }).totalShipments ?? null,
         createdAt: (data as { createdAt?: string }).createdAt ?? null,
+        billingInfo: (data as { billingInfo?: string }).billingInfo ?? null,
       });
     } catch {
       localStorage.removeItem(TOKEN_KEY);

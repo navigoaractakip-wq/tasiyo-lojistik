@@ -71,6 +71,7 @@ export const GetMeResponse = zod.object({
   vehiclePlate: zod.string().optional(),
   isPhoneVerified: zod.boolean().optional(),
   notificationSettings: zod.string().optional(),
+  billingInfo: zod.string().optional(),
   rating: zod.number().optional(),
   totalShipments: zod.number().optional(),
   createdAt: zod.date(),
@@ -260,6 +261,7 @@ export const GetUserResponse = zod.object({
   vehiclePlate: zod.string().optional(),
   isPhoneVerified: zod.boolean().optional(),
   notificationSettings: zod.string().optional(),
+  billingInfo: zod.string().optional(),
   rating: zod.number().optional(),
   totalShipments: zod.number().optional(),
   createdAt: zod.date(),
@@ -285,6 +287,7 @@ export const UpdateUserBody = zod.object({
   vehiclePlate: zod.string().optional(),
   isPhoneVerified: zod.boolean().optional(),
   notificationSettings: zod.string().optional(),
+  billingInfo: zod.string().optional(),
 });
 
 export const UpdateUserResponse = zod.object({
@@ -303,6 +306,7 @@ export const UpdateUserResponse = zod.object({
   vehiclePlate: zod.string().optional(),
   isPhoneVerified: zod.boolean().optional(),
   notificationSettings: zod.string().optional(),
+  billingInfo: zod.string().optional(),
   rating: zod.number().optional(),
   totalShipments: zod.number().optional(),
   createdAt: zod.date(),
