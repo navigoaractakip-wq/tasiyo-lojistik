@@ -1,6 +1,19 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import {
+  db,
+  usersTable,
+  userSessionsTable,
+  userConsentsTable,
+  notificationsTable,
+  supportTicketsTable,
+  conversationParticipantsTable,
+  messagesTable,
+  loadsTable,
+  offersTable,
+  shipmentsTable,
+  shipmentEventsTable,
+} from "@workspace/db";
+import { eq, or } from "drizzle-orm";
 import {
   ListUsersResponse,
   CreateUserBody,
@@ -176,18 +189,70 @@ router.delete("/users/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [existing] = await db.select({ id: usersTable.id, role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
-  if (!existing) {
-    res.status(404).json({ error: "User not found" });
-    return;
-  }
-  if (existing.role === "admin") {
-    res.status(403).json({ error: "Yönetici hesabı silinemez" });
-    return;
-  }
+  try {
+    const [existing] = await db.select({ id: usersTable.id, role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "Kullanıcı bulunamadı" });
+      return;
+    }
+    if (existing.role === "admin") {
+      res.status(403).json({ error: "Yönetici hesabı silinemez" });
+      return;
+    }
 
-  await db.delete(usersTable).where(eq(usersTable.id, id));
-  res.json({ success: true });
+    // 1. Kullanıcının yüklerine bağlı sevkiyat olayları, sevkiyatlar ve teklifleri sil
+    const userLoads = await db.select({ id: loadsTable.id }).from(loadsTable).where(eq(loadsTable.postedById, id));
+    for (const load of userLoads) {
+      const loadShipments = await db.select({ id: shipmentsTable.id }).from(shipmentsTable).where(eq(shipmentsTable.loadId, load.id));
+      for (const shipment of loadShipments) {
+        await db.delete(shipmentEventsTable).where(eq(shipmentEventsTable.shipmentId, shipment.id));
+      }
+      await db.delete(shipmentsTable).where(eq(shipmentsTable.loadId, load.id));
+      await db.delete(offersTable).where(eq(offersTable.loadId, load.id));
+    }
+    await db.delete(loadsTable).where(eq(loadsTable.postedById, id));
+
+    // 2. Şoförün sevkiyat olayları, sevkiyatları ve teklifleri
+    const driverShipments = await db.select({ id: shipmentsTable.id }).from(shipmentsTable).where(eq(shipmentsTable.driverId, id));
+    for (const shipment of driverShipments) {
+      await db.delete(shipmentEventsTable).where(eq(shipmentEventsTable.shipmentId, shipment.id));
+    }
+    await db.delete(shipmentsTable).where(eq(shipmentsTable.driverId, id));
+    await db.delete(offersTable).where(eq(offersTable.driverId, id));
+
+    // 3. Destek talepleri
+    await db.delete(supportTicketsTable).where(or(
+      eq(supportTicketsTable.userId, id),
+      eq(supportTicketsTable.targetUserId, id),
+    ));
+
+    // 4. Bildirimler
+    await db.delete(notificationsTable).where(eq(notificationsTable.userId, id));
+
+    // 5. Konuşma katılımcıları ve mesajlar
+    const userConvs = await db.select({ conversationId: conversationParticipantsTable.conversationId })
+      .from(conversationParticipantsTable)
+      .where(eq(conversationParticipantsTable.userId, id));
+    for (const conv of userConvs) {
+      await db.delete(messagesTable).where(eq(messagesTable.conversationId, conv.conversationId));
+      await db.delete(conversationParticipantsTable).where(eq(conversationParticipantsTable.conversationId, conv.conversationId));
+    }
+    await db.delete(messagesTable).where(eq(messagesTable.senderId, id));
+
+    // 6. Oturumlar
+    await db.delete(userSessionsTable).where(eq(userSessionsTable.userId, id));
+
+    // 7. Kullanıcı rızaları (FK kısıtlaması var!)
+    await db.delete(userConsentsTable).where(eq(userConsentsTable.userId, id));
+
+    // 8. Son olarak kullanıcıyı sil
+    await db.delete(usersTable).where(eq(usersTable.id, id));
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Kullanıcı silme hatası:", err);
+    res.status(500).json({ error: "Kullanıcı silinirken hata oluştu: " + (err?.message ?? "Bilinmeyen hata") });
+  }
 });
 
 export default router;
