@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useListOffers, getListOffersQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,13 +11,34 @@ import {
 import {
   MapPin, Clock, CheckCircle2, XCircle, Hourglass,
   Loader2, FileText, TrendingUp, TrendingDown, Minus,
-  Undo2, AlertTriangle, Phone, Mail, Building2,
+  Undo2, AlertTriangle, Phone, Mail, Building2, CalendarDays,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, startOfDay, startOfWeek, startOfMonth, startOfYear, subYears } from "date-fns";
 import { tr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 
 type Tab = "pending" | "history";
+
+type TimeFilter = "today" | "week" | "month" | "year" | "3years";
+
+const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
+  { key: "today",  label: "Bugün"    },
+  { key: "week",   label: "Bu Hafta" },
+  { key: "month",  label: "Bu Ay"    },
+  { key: "year",   label: "Bu Yıl"   },
+  { key: "3years", label: "3 Yıl"    },
+];
+
+function getFilterStart(filter: TimeFilter): Date {
+  const now = new Date();
+  switch (filter) {
+    case "today":  return startOfDay(now);
+    case "week":   return startOfWeek(now, { locale: tr });
+    case "month":  return startOfMonth(now);
+    case "year":   return startOfYear(now);
+    case "3years": return subYears(startOfDay(now), 3);
+  }
+}
 
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
@@ -212,6 +233,7 @@ function OfferCard({ offer, onWithdraw }: { offer: any; onWithdraw?: (id: string
 
 export default function DriverOffers() {
   const [activeTab, setActiveTab] = useState<Tab>("pending");
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("month");
   const [withdrawTarget, setWithdrawTarget] = useState<string | null>(null);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const { toast } = useToast();
@@ -222,9 +244,15 @@ export default function DriverOffers() {
 
   const pendingOffers = pendingData?.offers ?? [];
   const allOffers = historyData?.offers ?? [];
-  const historyOffers = allOffers.filter(o => o.status !== "pending");
-  const acceptedCount = allOffers.filter(o => o.status === "accepted").length;
-  const rejectedCount = allOffers.filter(o => o.status === "rejected").length;
+  const allHistoryOffers = allOffers.filter(o => o.status !== "pending");
+
+  const historyOffers = useMemo(() => {
+    const since = getFilterStart(timeFilter);
+    return allHistoryOffers.filter(o => new Date(o.createdAt) >= since);
+  }, [allHistoryOffers, timeFilter]);
+
+  const acceptedCount = historyOffers.filter(o => o.status === "accepted").length;
+  const rejectedCount = historyOffers.filter(o => o.status === "rejected").length;
 
   const handleWithdrawConfirm = async () => {
     if (!withdrawTarget) return;
@@ -319,12 +347,32 @@ export default function DriverOffers() {
 
         {activeTab === "history" && (
           <>
+            {/* Zaman Filtresi */}
+            <div className="-mx-4 px-4 pb-1">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
+                {TIME_FILTERS.map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setTimeFilter(f.key)}
+                    className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                      timeFilter === f.key
+                        ? "bg-primary text-white border-primary shadow-sm"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-primary/40 hover:text-primary"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Stats */}
-            {!historyLoading && allOffers.length > 0 && (
+            {!historyLoading && allHistoryOffers.length > 0 && (
               <div className="grid grid-cols-3 gap-3 mb-1">
                 <Card className="border-0 shadow-sm">
                   <CardContent className="p-3 text-center">
-                    <p className="text-xl font-bold text-primary">{allOffers.length}</p>
+                    <p className="text-xl font-bold text-primary">{historyOffers.length}</p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">Toplam</p>
                   </CardContent>
                 </Card>
@@ -348,10 +396,18 @@ export default function DriverOffers() {
                 <Loader2 className="w-5 h-5 animate-spin" /> Yükleniyor…
               </div>
             ) : historyOffers.length === 0 ? (
-              <div className="text-center py-16 space-y-2">
-                <Clock className="w-12 h-12 text-gray-200 mx-auto" />
-                <p className="font-medium text-gray-500">Geçmiş teklif yok</p>
-                <p className="text-xs text-muted-foreground">Kabul edilen ve reddedilen teklifleriniz burada görünür.</p>
+              <div className="text-center py-14 space-y-2">
+                <CalendarDays className="w-12 h-12 text-gray-200 mx-auto" />
+                <p className="font-medium text-gray-500">
+                  {allHistoryOffers.length === 0
+                    ? "Geçmiş teklif yok"
+                    : `${TIME_FILTERS.find(f => f.key === timeFilter)?.label} döneminde teklif yok`}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {allHistoryOffers.length === 0
+                    ? "Kabul edilen ve reddedilen teklifleriniz burada görünür."
+                    : "Farklı bir zaman aralığı seçebilirsiniz."}
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
