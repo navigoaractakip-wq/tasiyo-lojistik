@@ -38,6 +38,7 @@ import CorporateOffers from "@/pages/corporate/CorporateOffers";
 import CorporateTracking from "@/pages/corporate/CorporateTracking";
 import CorporateTeam from "@/pages/corporate/CorporateTeam";
 import CorporateSettings from "@/pages/corporate/CorporateSettings";
+import SubscriptionPage from "@/pages/corporate/SubscriptionPage";
 
 // Driver
 import DriverFeed from "@/pages/driver/DriverFeed";
@@ -198,6 +199,11 @@ function Router() {
       <Route path="/dashboard/settings">
         <ProtectedRoute allowedRoles={["corporate"]}>
           <AppLayout><CorporateSettings /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/abonelik">
+        <ProtectedRoute allowedRoles={["corporate"]}>
+          <AppLayout><SubscriptionPage /></AppLayout>
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/destek">

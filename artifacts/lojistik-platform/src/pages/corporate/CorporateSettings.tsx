@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "wouter";
 import { useAuth } from "@/lib/auth-context";
 import { useUpdateUser } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -545,27 +546,26 @@ export default function CorporateSettings() {
       {/* Billing */}
       <Card className="shadow-sm">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-green-600" />
-            <CardTitle className="text-lg">Abonelik & Fatura</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-green-600" />
+              <CardTitle className="text-lg">Abonelik & Fatura</CardTitle>
+            </div>
+            <Link href="/dashboard/abonelik">
+              <Button variant="outline" size="sm">Aboneliği Yönet</Button>
+            </Link>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-200">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <p className="font-semibold">Kurumsal Plan</p>
-                <Badge className="bg-blue-600 text-white border-0">Aktif</Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">Sınırsız ilan · Öncelikli destek · Gelişmiş analitik</p>
-              <p className="text-xs text-muted-foreground mt-1">Sonraki ödeme: 15 Nisan 2026</p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold">4.999 ₺</p>
-              <p className="text-xs text-muted-foreground">/ay</p>
-            </div>
-          </div>
-          <Button variant="outline" className="mt-3 w-full">Fatura Geçmişini Görüntüle</Button>
+          <p className="text-sm text-muted-foreground mb-3">
+            Plan değişikliği, ödeme yönetimi ve fatura geçmişi için abonelik sayfasını ziyaret edin.
+          </p>
+          <Link href="/dashboard/abonelik">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700">
+              <CreditCard className="w-4 h-4 mr-2" />
+              Abonelik & Ödeme Sayfasına Git
+            </Button>
+          </Link>
         </CardContent>
       </Card>
 

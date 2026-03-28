@@ -77,13 +77,24 @@ A hybrid logistics marketplace + real-time dispatch platform. All UI text is in 
 
 ## Database Schema
 
-- `users` — platform users (admin, corporate, individual, driver roles)
+- `users` — platform users (admin, corporate, individual, driver roles); includes `billingInfo` JSON field
 - `loads` — freight/load listings with origin/destination, pricing model (fixed/bidding)
 - `offers` — bids submitted by drivers on loads
 - `shipments` — active/completed shipments
 - `shipment_events` — tracking timeline events for each shipment
 - `notifications` — push-style notifications per user
 - `conversations` / `conversation_participants` / `messages` — messaging system
+- `subscriptions` — corporate subscription plans (plan, status, amount, Paynet card token, dates)
+- `payment_transactions` — payment history per user (Paynet txn IDs, card masked, status)
+
+## Payment System (Paynet)
+
+- Backend route: `artifacts/api-server/src/routes/payment.ts`
+- 3D Secure flow: `POST /api/payment/initiate-3d` → Paynet tds_initial → bank OTP → `POST /api/payment/callback-3d` → tds_charge → subscription activated
+- Admin Paynet settings: `paynet_secret_key`, `paynet_merchant_id`, `paynet_ratio_code`, `paynet_base_url`
+- Frontend page: `/dashboard/abonelik` — plan selection, credit card form, transaction history
+- Plans: Başlangıç (0₺), Kurumsal (4.999₺/ay), Premium (9.999₺/ay)
+- Paynet API base URL: `https://api.paynet.com.tr` (configurable in admin settings)
 
 ## API Endpoints
 
@@ -95,6 +106,13 @@ A hybrid logistics marketplace + real-time dispatch platform. All UI text is in 
 - `GET /api/notifications` — notifications
 - `GET /api/admin/stats` — admin statistics with charts
 - `GET/POST /api/messages` — messaging/conversations
+- `GET /api/payment/plans` — available subscription plans (public)
+- `GET /api/payment/subscription` — current user's subscription (auth required)
+- `GET /api/payment/transactions` — payment history (auth required)
+- `POST /api/payment/initiate-3d` — initiate 3D Secure payment via Paynet
+- `POST /api/payment/callback-3d` — Paynet/bank callback after OTP
+- `POST /api/payment/direct` — direct (non-3D) payment
+- `POST /api/payment/cancel` — cancel active subscription
 
 ## TypeScript & Composite Projects
 

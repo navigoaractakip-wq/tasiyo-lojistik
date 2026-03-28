@@ -27,6 +27,12 @@ const DEFAULT_SETTINGS = [
   { key: "smtp_pass",  label: "SMTP Şifre",        description: "E-posta veya uygulama şifresi",   group: "email", isSecret: true  },
   { key: "smtp_from",  label: "Gönderen Adres",    description: 'Örn: "TaşıYo <no-reply@tasiyo.com>"', group: "email", isSecret: false },
 
+  // Paynet
+  { key: "paynet_secret_key",    label: "Paynet Secret Key",    description: "Paynet API Secret Key (Hesabım → Firma Bilgileri → Entegrasyon Bilgileri)", group: "paynet", isSecret: true  },
+  { key: "paynet_merchant_id",   label: "Paynet Bayi Kodu",     description: "Paynet Bayi Kodu (Hesabım → Firma Bilgileri)",                              group: "paynet", isSecret: true  },
+  { key: "paynet_ratio_code",    label: "Paynet Oran Kodu",     description: "Taksit/komisyon oran kodu (Hesabım → Oran alanından oluşturun)",            group: "paynet", isSecret: false },
+  { key: "paynet_base_url",      label: "Paynet API URL",       description: "Paynet API temel URL (varsayılan: https://api.paynet.com.tr)",              group: "paynet", isSecret: false },
+
   // Platform
   { key: "platform_name",       label: "Platform Adı",              description: "Platformun görünen adı (varsayılan: TaşıYo)",                       group: "platform", isSecret: false },
   { key: "platform_logo",       label: "Platform Logosu (Koyu)",    description: "Açık arka planlarda kullanılan logo (base64 resim)",                group: "platform", isSecret: false },

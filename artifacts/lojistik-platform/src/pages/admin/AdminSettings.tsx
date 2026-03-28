@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Mail,
   Settings2,
+  CreditCard,
   Save,
   TestTube2,
   Loader2,
@@ -60,6 +61,13 @@ const GROUPS: Group[] = [
     description: "OTP doğrulama e-postaları için SMTP sunucu yapılandırması",
     icon: <Mail className="w-5 h-5" />,
     color: "text-blue-600",
+  },
+  {
+    id: "paynet",
+    label: "Ödeme Sistemi (Paynet)",
+    description: "Paynet API entegrasyonu — kurumsal abonelik ödemeleri için gereklidir",
+    icon: <CreditCard className="w-5 h-5" />,
+    color: "text-green-600",
   },
   {
     id: "platform",

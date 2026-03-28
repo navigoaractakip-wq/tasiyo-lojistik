@@ -8,3 +8,4 @@ export * from "./auth";
 export * from "./contracts";
 export * from "./user_consents";
 export * from "./support_tickets";
+export * from "./subscriptions";
