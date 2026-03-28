@@ -148,19 +148,21 @@ router.post("/settings/test-sms", async (req, res): Promise<void> => {
     return;
   }
 
-  const sent = await sendSms(
+  const result = await sendSms(
     parsed.data.phone,
     "TaşıYo — Bu bir test mesajıdır. SMS entegrasyonunuz başarıyla çalışıyor! 🚚"
   );
 
-  res.json(
-    TestSmsResponse.parse({
-      success: sent,
-      message: sent
-        ? "Test SMS başarıyla gönderildi."
-        : "Twilio yapılandırılmamış, kod konsola yazıldı.",
-    })
-  );
+  let message: string;
+  if (result.success) {
+    message = "Test SMS başarıyla gönderildi.";
+  } else if (result.notConfigured) {
+    message = "Twilio yapılandırılmamış. Lütfen Account SID, Auth Token ve telefon numarasını kaydedin.";
+  } else {
+    message = `SMS gönderilemedi. Twilio hatası: ${result.errorMessage}`;
+  }
+
+  res.json(TestSmsResponse.parse({ success: result.success, message }));
 });
 
 router.post("/settings/test-email", async (req, res): Promise<void> => {
@@ -177,16 +179,18 @@ router.post("/settings/test-email", async (req, res): Promise<void> => {
       <p style="color: #16a34a; font-weight: bold;">✅ E-posta entegrasyonunuz başarıyla çalışıyor!</p>
     </div>`;
 
-  const sent = await sendEmail(parsed.data.email, "TaşıYo — SMTP Test E-postası", html);
+  const result = await sendEmail(parsed.data.email, "TaşıYo — SMTP Test E-postası", html);
 
-  res.json(
-    TestEmailResponse.parse({
-      success: sent,
-      message: sent
-        ? "Test e-postası başarıyla gönderildi."
-        : "SMTP yapılandırılmamış, içerik konsola yazıldı.",
-    })
-  );
+  let message: string;
+  if (result.success) {
+    message = "Test e-postası başarıyla gönderildi.";
+  } else if (result.notConfigured) {
+    message = "SMTP yapılandırılmamış. Lütfen sunucu, kullanıcı ve şifreyi kaydedin.";
+  } else {
+    message = `E-posta gönderilemedi. SMTP hatası: ${result.errorMessage}`;
+  }
+
+  res.json(TestEmailResponse.parse({ success: result.success, message }));
 });
 
 export default router;

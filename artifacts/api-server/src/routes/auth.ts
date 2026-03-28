@@ -121,8 +121,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   // Önce gönder, sonra sonuca göre sentVia kaydet
   let sentVia: string | null = null;
   if (identifierType === "phone") {
-    const sent = await sendSms(identifier, `TaşıYo doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir.`);
-    sentVia = sent ? "sms" : null;
+    const result = await sendSms(identifier, `TaşıYo doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir.`);
+    sentVia = result.success ? "sms" : null;
   } else {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
@@ -134,8 +134,8 @@ router.post("/auth/register", async (req, res): Promise<void> => {
         </div>
         <p style="color:#6b7280; font-size:0.9rem;">Bu kod 10 dakika geçerlidir.</p>
       </div>`;
-    const sent = await sendEmail(identifier, "TaşıYo — Hesabınız Oluşturuldu", html);
-    sentVia = sent ? "email" : null;
+    const result = await sendEmail(identifier, "TaşıYo — Hesabınız Oluşturuldu", html);
+    sentVia = result.success ? "email" : null;
   }
 
   await db.insert(otpCodesTable).values({ identifier, identifierType, code, expiresAt, sentVia, userLabel: name.trim() });
@@ -202,11 +202,11 @@ router.post("/auth/send-otp", async (req, res): Promise<void> => {
   // Önce gönder, sonra sonuca göre sentVia kaydet
   let sentVia2: string | null = null;
   if (identifierType === "phone") {
-    const sent = await sendSms(
+    const result = await sendSms(
       identifier,
       `TaşıYo doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir.`
     );
-    sentVia2 = sent ? "sms" : null;
+    sentVia2 = result.success ? "sms" : null;
   } else {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
@@ -215,8 +215,8 @@ router.post("/auth/send-otp", async (req, res): Promise<void> => {
         <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1e40af; padding: 16px 0;">${code}</div>
         <p style="color: #6b7280; font-size: 14px;">Bu kod 10 dakika geçerlidir. Paylaşmayın.</p>
       </div>`;
-    const sent = await sendEmail(identifier, "TaşıYo — Giriş Doğrulama Kodu", html);
-    sentVia2 = sent ? "email" : null;
+    const result = await sendEmail(identifier, "TaşıYo — Giriş Doğrulama Kodu", html);
+    sentVia2 = result.success ? "email" : null;
   }
 
   await db.insert(otpCodesTable).values({ identifier, identifierType, code, expiresAt, sentVia: sentVia2, userLabel: user.name });
@@ -361,7 +361,8 @@ router.post("/auth/send-phone-otp", async (req, res): Promise<void> => {
   await db.update(otpCodesTable).set({ isUsed: true }).where(and(eq(otpCodesTable.identifier, user.phone), eq(otpCodesTable.identifierType, "phone"), eq(otpCodesTable.isUsed, false)));
   await db.insert(otpCodesTable).values({ identifier: user.phone, identifierType: "phone", code, expiresAt });
 
-  const smsSent = await sendSms(user.phone, `TaşıYo telefon doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir.`);
+  const smsResult = await sendSms(user.phone, `TaşıYo telefon doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir.`);
+  const smsSent = smsResult.success;
   const sentVia3 = smsSent ? "sms" : null;
   // sentVia'yı OTP kaydına ekle (invalidate + insert zaten yapıldı, şimdi update et)
   await db.update(otpCodesTable).set({ sentVia: sentVia3, userLabel: user.name }).where(and(eq(otpCodesTable.identifier, user.phone!), eq(otpCodesTable.identifierType, "phone"), eq(otpCodesTable.code, code)));
