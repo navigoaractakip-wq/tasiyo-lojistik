@@ -85,7 +85,8 @@ function TicketDetailDialog({
     if (!replyText.trim()) return;
     setIsPending(true);
     try {
-      const r = await fetch(`/api/support/tickets/${ticket.id}`, {
+      const base = import.meta.env.BASE_URL ?? "/";
+      const r = await fetch(`${base}api/support/tickets/${ticket.id}`.replace(/\/+/g, "/").replace(":/", "://"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ adminReply: replyText, status: "in_progress" }),
@@ -102,7 +103,8 @@ function TicketDetailDialog({
   };
 
   const closeTicket = async () => {
-    const r = await fetch(`/api/support/tickets/${ticket.id}`, {
+    const base = import.meta.env.BASE_URL ?? "/";
+    const r = await fetch(`${base}api/support/tickets/${ticket.id}`.replace(/\/+/g, "/").replace(":/", "://"), {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ status: "closed" }),

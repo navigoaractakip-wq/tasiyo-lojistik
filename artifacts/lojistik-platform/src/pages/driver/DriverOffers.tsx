@@ -195,7 +195,8 @@ export default function DriverOffers() {
     if (!withdrawTarget) return;
     setIsWithdrawing(true);
     try {
-      const res = await fetch(`/api/offers/${withdrawTarget}/withdraw`, {
+      const base = import.meta.env.BASE_URL ?? "/";
+      const res = await fetch(`${base}api/offers/${withdrawTarget}/withdraw`.replace(/\/+/g, "/").replace(":/", "://"), {
         method: "POST",
         credentials: "include",
       });

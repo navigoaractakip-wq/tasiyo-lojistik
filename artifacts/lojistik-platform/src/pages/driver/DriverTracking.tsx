@@ -100,7 +100,8 @@ function buildSteps(load: any): TripStep[] {
 type GeoStatus = "idle" | "requesting" | "tracking" | "denied" | "error";
 
 async function fetchShipments(token: string, status: string) {
-  const r = await fetch(`/api/shipments?status=${encodeURIComponent(status)}`, {
+  const base = (import.meta.env.BASE_URL ?? "/");
+  const r = await fetch(`${base}api/shipments?status=${encodeURIComponent(status)}`.replace(/\/+\?/, "?").replace(/\/+/g, "/").replace(":/", "://"), {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!r.ok) return { shipments: [] };
@@ -174,7 +175,8 @@ export default function DriverTracking() {
         const now2 = Date.now();
         if (activeShipment && now2 - locationSentRef.current > 30_000) {
           locationSentRef.current = now2;
-          fetch(`/api/shipments/${activeShipment.id}/location`, {
+          const base2 = import.meta.env.BASE_URL ?? "/";
+          fetch(`${base2}api/shipments/${activeShipment.id}/location`.replace(/\/+/g, "/").replace(":/", "://"), {
             method: "PATCH",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             body: JSON.stringify({ lat: latitude, lng: longitude }),
@@ -223,7 +225,8 @@ export default function DriverTracking() {
       // Eğer adım ana durumu değiştiriyorsa ekle
       if (step.status) body.status = step.status;
 
-      const res = await fetch(`/api/shipments/${activeShipment.id}/status`, {
+      const base = import.meta.env.BASE_URL ?? "/";
+      const res = await fetch(`${base}api/shipments/${activeShipment.id}/status`.replace(/\/+/g, "/").replace(":/", "://"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),

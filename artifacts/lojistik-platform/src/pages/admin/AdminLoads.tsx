@@ -64,7 +64,8 @@ export default function AdminLoads() {
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try {
-      const res = await fetch(`/api/loads/${id}`, {
+      const base = import.meta.env.BASE_URL ?? "/";
+      const res = await fetch(`${base}api/loads/${id}`.replace(/\/+/g, "/").replace(":/", "://"), {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

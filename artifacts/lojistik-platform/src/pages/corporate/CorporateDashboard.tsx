@@ -60,7 +60,8 @@ export default function CorporateDashboard() {
     if (!deletingLoad || !token) return;
     setDeleteLoading(true);
     try {
-      const res = await fetch(`/api/loads/${deletingLoad.id}`, {
+      const base = import.meta.env.BASE_URL ?? "/";
+      const res = await fetch(`${base}api/loads/${deletingLoad.id}`.replace(/\/+/g, "/").replace(":/", "://"), {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

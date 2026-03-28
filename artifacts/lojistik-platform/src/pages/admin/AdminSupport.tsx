@@ -103,7 +103,8 @@ export default function AdminSupport() {
   const { data: tickets = [], isLoading } = useQuery({
     queryKey: ["admin-support-tickets"],
     queryFn: async () => {
-      const r = await fetch("/api/support/tickets", {
+      const base = import.meta.env.BASE_URL ?? "/";
+      const r = await fetch(`${base}api/support/tickets`.replace(/\/+/g, "/").replace(":/", "://"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!r.ok) throw new Error();
@@ -114,7 +115,8 @@ export default function AdminSupport() {
   const { data: stats } = useQuery({
     queryKey: ["admin-support-stats"],
     queryFn: async () => {
-      const r = await fetch("/api/support/stats", {
+      const base = import.meta.env.BASE_URL ?? "/";
+      const r = await fetch(`${base}api/support/stats`.replace(/\/+/g, "/").replace(":/", "://"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!r.ok) throw new Error();
@@ -124,7 +126,8 @@ export default function AdminSupport() {
 
   const replyMutation = useMutation({
     mutationFn: async ({ id, adminReply, status }: { id: number; adminReply: string; status: string }) => {
-      const r = await fetch(`/api/support/tickets/${id}`, {
+      const base = import.meta.env.BASE_URL ?? "/";
+      const r = await fetch(`${base}api/support/tickets/${id}`.replace(/\/+/g, "/").replace(":/", "://"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ adminReply, status }),
@@ -146,7 +149,8 @@ export default function AdminSupport() {
 
   const statusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const r = await fetch(`/api/support/tickets/${id}`, {
+      const base = import.meta.env.BASE_URL ?? "/";
+      const r = await fetch(`${base}api/support/tickets/${id}`.replace(/\/+/g, "/").replace(":/", "://"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status }),
