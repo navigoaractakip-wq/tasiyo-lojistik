@@ -45,6 +45,7 @@ import DriverLoads from "@/pages/driver/DriverLoads";
 import DriverMap from "@/pages/driver/DriverMap";
 import DriverTracking from "@/pages/driver/DriverTracking";
 import DriverOffers from "@/pages/driver/DriverOffers";
+import DriverProfile from "@/pages/driver/DriverProfile";
 
 const queryClient = new QueryClient();
 
@@ -229,6 +230,11 @@ function Router() {
       <Route path="/driver/offers">
         <ProtectedRoute allowedRoles={["driver"]}>
           <AppLayout><DriverOffers /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/driver/profil">
+        <ProtectedRoute allowedRoles={["driver"]}>
+          <AppLayout><DriverProfile /></AppLayout>
         </ProtectedRoute>
       </Route>
       <Route path="/driver/destek">

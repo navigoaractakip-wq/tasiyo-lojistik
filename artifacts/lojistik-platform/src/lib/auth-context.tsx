@@ -25,6 +25,10 @@ export interface AuthUser {
   vehiclePlate?: string | null;
   isPhoneVerified?: boolean;
   notificationSettings?: string | null;
+  status?: "active" | "suspended" | "pending" | null;
+  rating?: number | null;
+  totalShipments?: number | null;
+  createdAt?: string | null;
 }
 
 interface AuthContextType {
@@ -73,6 +77,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         vehiclePlate: (data as { vehiclePlate?: string }).vehiclePlate,
         isPhoneVerified: (data as { isPhoneVerified?: boolean }).isPhoneVerified ?? false,
         notificationSettings: data.notificationSettings,
+        status: (data as { status?: "active" | "suspended" | "pending" }).status,
+        rating: (data as { rating?: number }).rating ?? null,
+        totalShipments: (data as { totalShipments?: number }).totalShipments ?? null,
+        createdAt: (data as { createdAt?: string }).createdAt ?? null,
       });
     } catch {
       localStorage.removeItem(TOKEN_KEY);

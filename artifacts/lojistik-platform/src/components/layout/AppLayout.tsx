@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Package, Truck, Users, 
   MessageSquare, Settings, Bell, LogOut, 
   Menu, X, ShieldAlert, BarChart3, Map,
-  Search, FileText, ScrollText, HeadphonesIcon
+  Search, FileText, ScrollText, HeadphonesIcon, UserCircle2,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       { href: "/driver/map", label: "Harita", icon: Map },
       { href: "/driver/offers", label: "Tekliflerim", icon: FileText },
       { href: "/driver/tracking", label: "Takip", icon: Truck },
+      { href: "/driver/profil", label: "Profilim", icon: UserCircle2 },
       { href: "/driver/destek", label: "Destek", icon: HeadphonesIcon },
     ];
 
@@ -133,6 +134,11 @@ export function AppLayout({ children }: AppLayoutProps) {
                       <p className="text-sm font-semibold truncate">{user?.name ?? "Şoför"}</p>
                       <p className="text-xs text-muted-foreground truncate">{user?.phone ?? user?.email ?? ""}</p>
                     </div>
+                    <DropdownMenuItem asChild className="gap-2 cursor-pointer">
+                      <Link href="/driver/profil">
+                        <UserCircle2 className="w-4 h-4" /> Profilim
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={logout} className="text-red-600 gap-2 cursor-pointer">
                       <LogOut className="w-4 h-4" /> Çıkış Yap
                     </DropdownMenuItem>
@@ -184,6 +190,11 @@ export function AppLayout({ children }: AppLayoutProps) {
                       <p className="text-xs font-semibold truncate">{user?.name ?? "Şoför"}</p>
                       <p className="text-[11px] text-muted-foreground truncate">{user?.phone ?? user?.email ?? ""}</p>
                     </div>
+                    <DropdownMenuItem asChild className="gap-2 cursor-pointer">
+                      <Link href="/driver/profil">
+                        <UserCircle2 className="w-4 h-4" /> Profilim
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={logout} className="text-red-600 gap-2 cursor-pointer">
                       <LogOut className="w-4 h-4" /> Çıkış Yap
                     </DropdownMenuItem>
