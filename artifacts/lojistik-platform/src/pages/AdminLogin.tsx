@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendOtp, verifyOtp } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth-context";
+import { usePlatformBranding } from "@/lib/platform-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +24,7 @@ const variants = {
 export default function AdminLogin() {
   const [, navigate] = useLocation();
   const { setToken, user } = useAuth();
+  const branding = usePlatformBranding();
   const { toast } = useToast();
 
   const [step, setStep] = useState<Step>("input");
@@ -108,10 +110,14 @@ export default function AdminLogin() {
           className="text-center mb-8"
         >
           <div className="inline-flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-slate-700 rounded-xl flex items-center justify-center shadow-lg">
-              <Truck className="w-5 h-5 text-slate-100" />
-            </div>
-            <span className="text-3xl font-extrabold text-white tracking-tight">TaşıYo</span>
+            {branding.logoLight ? (
+              <img src={branding.logoLight} alt="Logo" className="h-10 w-10 object-contain" />
+            ) : branding.logo ? (
+              <img src={branding.logo} alt="Logo" className="h-10 w-10 object-contain" />
+            ) : (
+              <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-10 w-10 object-contain" />
+            )}
+            <span className="text-3xl font-extrabold text-white tracking-tight">{branding.name}</span>
           </div>
           <p className="text-slate-500 text-sm">Yönetici Girişi</p>
         </motion.div>

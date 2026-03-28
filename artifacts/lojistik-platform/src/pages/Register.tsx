@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRegister, useGetContracts, type Contract } from "@workspace/api-client-react";
+import { usePlatformBranding } from "@/lib/platform-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,6 +81,7 @@ function ContractModal({
 
 export default function Register() {
   const [, setLocation] = useLocation();
+  const branding = usePlatformBranding();
   const { toast } = useToast();
 
   const [step, setStep] = useState<Step>("role");
@@ -308,10 +310,14 @@ export default function Register() {
 
       <div className="relative z-10 w-full max-w-lg">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-2xl shadow-blue-600/40">
-            <Truck className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">TaşıYo</h1>
+          {branding.logoLight ? (
+            <img src={branding.logoLight} alt="Logo" className="h-16 w-16 object-contain mx-auto mb-4" />
+          ) : branding.logo ? (
+            <img src={branding.logo} alt="Logo" className="h-16 w-16 object-contain mx-auto mb-4" />
+          ) : (
+            <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="h-16 w-16 object-contain mx-auto mb-4" />
+          )}
+          <h1 className="text-3xl font-bold text-white tracking-tight">{branding.name}</h1>
           <p className="text-blue-200/70 text-sm mt-1">Lojistik Platformu</p>
         </div>
 
