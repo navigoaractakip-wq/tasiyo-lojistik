@@ -11,7 +11,12 @@ import { optionalAuth, requireAuth, type AuthRequest } from "../lib/auth-middlew
 
 const router: IRouter = Router();
 
-function mapOffer(offer: typeof offersTable.$inferSelect, driver?: typeof usersTable.$inferSelect | null, load?: typeof loadsTable.$inferSelect | null) {
+function mapOffer(
+  offer: typeof offersTable.$inferSelect,
+  driver?: typeof usersTable.$inferSelect | null,
+  load?: typeof loadsTable.$inferSelect | null,
+  poster?: typeof usersTable.$inferSelect | null,
+) {
   return {
     id: String(offer.id),
     loadId: String(offer.loadId),
@@ -43,7 +48,24 @@ function mapOffer(offer: typeof offersTable.$inferSelect, driver?: typeof usersT
           pricingModel: load.pricingModel as "fixed" | "bidding",
           status: load.status as "active" | "pending" | "assigned" | "completed" | "cancelled",
           price: load.price ?? undefined,
+          pickupDate: load.pickupDate ?? undefined,
           createdAt: load.createdAt,
+          postedBy: poster
+            ? {
+                id: String(poster.id),
+                name: poster.name,
+                email: poster.email,
+                phone: poster.phone ?? undefined,
+                role: poster.role as "admin" | "corporate" | "individual" | "driver",
+                status: poster.status as "active" | "suspended" | "pending",
+                company: poster.company ?? undefined,
+                address: poster.address ?? undefined,
+                avatarUrl: poster.avatarUrl ?? undefined,
+                rating: poster.rating ?? undefined,
+                totalShipments: poster.totalShipments ?? undefined,
+                createdAt: poster.createdAt,
+              }
+            : undefined,
         }
       : undefined,
   };
@@ -75,7 +97,11 @@ router.get("/offers", optionalAuth, async (req: AuthRequest, res): Promise<void>
     filtered = filtered.filter((o) => o.driverId === req.userId);
   }
 
-  const mapped = filtered.map((o) => mapOffer(o, userMap.get(o.driverId), loadMap.get(o.loadId)));
+  const mapped = filtered.map((o) => {
+    const load = loadMap.get(o.loadId);
+    const poster = load?.postedById ? userMap.get(load.postedById) : undefined;
+    return mapOffer(o, userMap.get(o.driverId), load, poster);
+  });
   res.json(ListOffersResponse.parse({ offers: mapped, total: mapped.length }));
 });
 
@@ -91,6 +117,15 @@ router.post("/offers", optionalAuth, async (req: AuthRequest, res): Promise<void
   if (!driverId) {
     res.status(401).json({ error: "Teklif vermek için giriş yapmalısınız." });
     return;
+  }
+
+  // Şoför profil tamamlama kontrolü
+  const [driverUser] = await db.select().from(usersTable).where(eq(usersTable.id, driverId));
+  if (driverUser && (driverUser.role === "individual" || driverUser.role === "driver")) {
+    if (!driverUser.vehicleTypes || !driverUser.vehiclePlate) {
+      res.status(403).json({ error: "DRIVER_PROFILE_INCOMPLETE", message: "Teklif verebilmek için araç tipi ve plaka bilgilerinizi profilinizde tamamlayın." });
+      return;
+    }
   }
 
   const loadId = parseInt(parsed.data.loadId, 10);

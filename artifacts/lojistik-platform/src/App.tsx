@@ -24,6 +24,9 @@ import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminContracts from "@/pages/admin/AdminContracts";
 import AdminSupport from "@/pages/admin/AdminSupport";
 
+// Profile Setup
+import ProfileSetup from "@/pages/ProfileSetup";
+
 // Support
 import SupportPage from "@/pages/SupportPage";
 
@@ -45,6 +48,16 @@ import DriverOffers from "@/pages/driver/DriverOffers";
 
 const queryClient = new QueryClient();
 
+function isProfileIncomplete(user: import("@/lib/auth-context").AuthUser, role: string): boolean {
+  if (role === "corporate") {
+    return !user.company || !user.address || !user.phone || !user.isPhoneVerified;
+  }
+  if (role === "driver") {
+    return !user.vehicleTypes || !user.vehiclePlate;
+  }
+  return false;
+}
+
 function ProtectedRoute({
   children,
   allowedRoles,
@@ -53,6 +66,7 @@ function ProtectedRoute({
   allowedRoles?: Array<"admin" | "corporate" | "driver">;
 }) {
   const { user, role, isLoading } = useAuth();
+  const [location] = useLocation();
 
   if (isLoading) {
     return (
@@ -72,6 +86,11 @@ function ProtectedRoute({
     return <Redirect to={target} />;
   }
 
+  // Profil tamamlanmamışsa profil kurulum sayfasına yönlendir (admin hariç)
+  if (role !== "admin" && location !== "/profil-tamamla" && isProfileIncomplete(user, role)) {
+    return <Redirect to="/profil-tamamla" />;
+  }
+
   return <>{children}</>;
 }
 
@@ -85,6 +104,9 @@ function Router() {
       <Route path="/admin-giris" component={AdminLogin} />
       <Route path="/admingiris"><Redirect to="/admin-giris" /></Route>
       <Route path="/kayit" component={Register} />
+
+      {/* Profile Setup */}
+      <Route path="/profil-tamamla" component={ProfileSetup} />
 
       {/* Root redirect */}
       <Route path="/">

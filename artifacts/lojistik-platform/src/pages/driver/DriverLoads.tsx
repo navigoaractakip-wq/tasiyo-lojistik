@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import {
   Search, MapPin, Weight, Truck, Clock, ChevronRight,
-  SlidersHorizontal, Zap, Package, Star, CheckCircle2, Loader2,
+  SlidersHorizontal, Package, Star, CheckCircle2, Loader2, Building2,
 } from "lucide-react";
 
 type Load = {
@@ -29,6 +29,12 @@ type Load = {
   status: string;
   isPremium?: boolean;
   createdAt: string | Date;
+  postedBy?: {
+    id: string;
+    name: string;
+    company?: string | null;
+    address?: string | null;
+  } | null;
 };
 
 const VEHICLE_TYPES = ["Tümü", "TIR", "Kapalı Kasa", "Açık Kasa", "Frigorifik", "Lowbed", "Tenteli TIR"];
@@ -89,6 +95,17 @@ function OfferDialog({ load, onClose }: { load: Load; onClose: () => void }) {
         <DialogTitle>Teklif Ver</DialogTitle>
         <DialogDescription className="text-xs leading-relaxed">{load.title}</DialogDescription>
       </DialogHeader>
+
+      {/* Firma bilgisi */}
+      {(load.postedBy?.company || load.postedBy?.address) && (
+        <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 flex items-start gap-2 text-sm mb-1">
+          <Building2 className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+          <div>
+            {load.postedBy.company && <p className="font-semibold text-blue-800">{load.postedBy.company}</p>}
+            {load.postedBy.address && <p className="text-blue-600 text-xs mt-0.5">{load.postedBy.address}</p>}
+          </div>
+        </div>
+      )}
 
       <div className="bg-gray-50 rounded-xl p-3 space-y-1.5 text-sm mb-1">
         <div className="flex items-center gap-2 text-gray-600">

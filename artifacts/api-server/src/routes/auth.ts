@@ -39,6 +39,8 @@ function mapUser(u: typeof usersTable.$inferSelect) {
     address: u.address ?? undefined,
     taxNumber: u.taxNumber ?? undefined,
     vehicleTypes: u.vehicleTypes ?? undefined,
+    vehiclePlate: u.vehiclePlate ?? undefined,
+    isPhoneVerified: u.isPhoneVerified ?? false,
     notificationSettings: u.notificationSettings ?? undefined,
     rating: u.rating ?? undefined,
     totalShipments: u.totalShipments ?? undefined,
@@ -341,6 +343,58 @@ router.get("/auth/me", async (req, res): Promise<void> => {
   }
 
   res.json(GetMeResponse.parse(mapUser(user)));
+});
+
+// POST /auth/send-phone-otp — Telefon doğrulama kodu gönder (giriş yapılmış kullanıcı)
+router.post("/auth/send-phone-otp", async (req, res): Promise<void> => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.replace("Bearer ", "");
+  if (!token) { res.status(401).json({ success: false, message: "Giriş yapmanız gerekiyor." }); return; }
+
+  const now = new Date();
+  const [session] = await db.select().from(userSessionsTable).where(and(eq(userSessionsTable.token, token), gt(userSessionsTable.expiresAt, now)));
+  if (!session) { res.status(401).json({ success: false, message: "Oturum süresi dolmuş." }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, session.userId));
+  if (!user || !user.phone) { res.status(400).json({ success: false, message: "Hesabınızda telefon numarası kayıtlı değil." }); return; }
+  if (user.isPhoneVerified) { res.json({ success: true, message: "Telefon zaten doğrulanmış." }); return; }
+
+  const code = generateOtp();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  await db.update(otpCodesTable).set({ isUsed: true }).where(and(eq(otpCodesTable.identifier, user.phone), eq(otpCodesTable.identifierType, "phone"), eq(otpCodesTable.isUsed, false)));
+  await db.insert(otpCodesTable).values({ identifier: user.phone, identifierType: "phone", code, expiresAt });
+
+  const sent = await sendSms(user.phone, `TaşıYo telefon doğrulama kodunuz: ${code}\n\nBu kod 10 dakika geçerlidir.`);
+  if (!sent) console.log(`\n🔐 [OTP - TELEFON DOĞRULAMA] ${user.phone} → KOD: ${code}\n`);
+
+  res.json({ success: true, message: sent ? "Doğrulama kodu telefonunuza gönderildi." : "SMTP/SMS yapılandırılmadığı için kod konsolda gösteriliyor.", devCode: !sent ? code : undefined });
+});
+
+// POST /auth/verify-phone — Telefon OTP'yi doğrula ve isPhoneVerified = true yap
+router.post("/auth/verify-phone", async (req, res): Promise<void> => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.replace("Bearer ", "");
+  if (!token) { res.status(401).json({ success: false, message: "Giriş yapmanız gerekiyor." }); return; }
+
+  const { code } = req.body;
+  if (!code || typeof code !== "string") { res.status(400).json({ success: false, message: "Doğrulama kodu gereklidir." }); return; }
+
+  const now = new Date();
+  const [session] = await db.select().from(userSessionsTable).where(and(eq(userSessionsTable.token, token), gt(userSessionsTable.expiresAt, now)));
+  if (!session) { res.status(401).json({ success: false, message: "Oturum süresi dolmuş." }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, session.userId));
+  if (!user || !user.phone) { res.status(400).json({ success: false, message: "Hesabınızda telefon numarası kayıtlı değil." }); return; }
+
+  const [otp] = await db.select().from(otpCodesTable).where(
+    and(eq(otpCodesTable.identifier, user.phone), eq(otpCodesTable.identifierType, "phone"), eq(otpCodesTable.code, code), eq(otpCodesTable.isUsed, false), gt(otpCodesTable.expiresAt, now))
+  );
+  if (!otp) { res.status(401).json({ success: false, message: "Kod hatalı veya süresi dolmuş." }); return; }
+
+  await db.update(otpCodesTable).set({ isUsed: true }).where(eq(otpCodesTable.id, otp.id));
+  const [updated] = await db.update(usersTable).set({ isPhoneVerified: true }).where(eq(usersTable.id, user.id)).returning();
+
+  res.json({ success: true, message: "Telefon numaranız doğrulandı.", isPhoneVerified: true, user: mapUser(updated) });
 });
 
 router.post("/auth/logout", async (req, res): Promise<void> => {

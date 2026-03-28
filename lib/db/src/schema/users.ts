@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, real, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, real, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -15,6 +15,8 @@ export const usersTable = pgTable("users", {
   address: text("address"),
   taxNumber: text("tax_number"),
   vehicleTypes: text("vehicle_types"),
+  vehiclePlate: text("vehicle_plate"),
+  isPhoneVerified: boolean("is_phone_verified").notNull().default(false),
   notificationSettings: text("notification_settings"),
   rating: real("rating").default(5.0),
   totalShipments: integer("total_shipments").default(0),

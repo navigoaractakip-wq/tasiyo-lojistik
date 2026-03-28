@@ -11,7 +11,7 @@ import {
 import {
   MapPin, Clock, CheckCircle2, XCircle, Hourglass,
   Loader2, FileText, TrendingUp, TrendingDown, Minus,
-  Undo2, AlertTriangle,
+  Undo2, AlertTriangle, Phone, Mail, Building2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -141,11 +141,42 @@ function OfferCard({ offer, onWithdraw }: { offer: any; onWithdraw?: (id: string
             </div>
           )}
 
-          {/* Accepted notice */}
+          {/* Accepted notice + Poster contact */}
           {isAccepted && (
-            <div className="flex items-center gap-2 bg-green-50 text-green-700 rounded-xl px-3 py-2 text-xs font-medium">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              Teklifiniz kabul edildi! Firma sizinle iletişime geçecek.
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 bg-green-50 text-green-700 rounded-xl px-3 py-2 text-xs font-medium">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                Teklifiniz kabul edildi!
+              </div>
+              {load?.postedBy && (
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-1.5 text-sm">
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Firma İletişim Bilgileri</p>
+                  {load.postedBy.company && (
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <Building2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                      <span className="font-medium">{load.postedBy.company}</span>
+                    </div>
+                  )}
+                  {load.postedBy.address && (
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <span className="text-xs">{load.postedBy.address}</span>
+                    </div>
+                  )}
+                  {load.postedBy.phone && (
+                    <a href={`tel:${load.postedBy.phone}`} className="flex items-center gap-2 text-blue-600 hover:underline">
+                      <Phone className="w-3.5 h-3.5 shrink-0" />
+                      <span className="font-medium">{load.postedBy.phone}</span>
+                    </a>
+                  )}
+                  {load.postedBy.email && (
+                    <a href={`mailto:${load.postedBy.email}`} className="flex items-center gap-2 text-blue-600 hover:underline">
+                      <Mail className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-xs">{load.postedBy.email}</span>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

@@ -34,8 +34,14 @@ function mapLoad(load: typeof loadsTable.$inferSelect, poster?: typeof usersTabl
           id: String(poster.id),
           name: poster.name,
           email: poster.email,
+          phone: poster.phone ?? undefined,
           role: poster.role as "admin" | "corporate" | "individual" | "driver",
           status: poster.status as "active" | "suspended" | "pending",
+          company: poster.company ?? undefined,
+          address: poster.address ?? undefined,
+          avatarUrl: poster.avatarUrl ?? undefined,
+          rating: poster.rating ?? undefined,
+          totalShipments: poster.totalShipments ?? undefined,
           createdAt: poster.createdAt,
         }
       : undefined,
@@ -87,6 +93,21 @@ router.post("/loads", optionalAuth, async (req: AuthRequest, res): Promise<void>
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
+  }
+
+  // Kurumsal kullanıcı profil ve telefon doğrulama kontrolü
+  if (req.userId) {
+    const [postingUser] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId));
+    if (postingUser && postingUser.role === "corporate") {
+      if (!postingUser.company || !postingUser.address || !postingUser.phone) {
+        res.status(403).json({ error: "PROFILE_INCOMPLETE", message: "İlan oluşturabilmek için şirket adı, adres ve telefon bilgilerini profilinizde tamamlayın." });
+        return;
+      }
+      if (!postingUser.isPhoneVerified) {
+        res.status(403).json({ error: "PHONE_NOT_VERIFIED", message: "İlan oluşturabilmek için telefon numaranızı doğrulamanız gerekiyor. Profil > Telefon Doğrulama adımını tamamlayın." });
+        return;
+      }
+    }
   }
 
   const d = parsed.data;

@@ -116,6 +116,8 @@ router.get("/users/:id", async (req, res): Promise<void> => {
       address: user.address ?? undefined,
       taxNumber: user.taxNumber ?? undefined,
       vehicleTypes: user.vehicleTypes ?? undefined,
+      vehiclePlate: user.vehiclePlate ?? undefined,
+      isPhoneVerified: user.isPhoneVerified ?? false,
       notificationSettings: user.notificationSettings ?? undefined,
       rating: user.rating ?? undefined,
       totalShipments: user.totalShipments ?? undefined,
@@ -148,6 +150,7 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
   if (parsed.data.address !== undefined) updates.address = parsed.data.address;
   if (parsed.data.taxNumber !== undefined) updates.taxNumber = parsed.data.taxNumber;
   if (parsed.data.vehicleTypes !== undefined) updates.vehicleTypes = parsed.data.vehicleTypes;
+  if (parsed.data.vehiclePlate !== undefined) updates.vehiclePlate = parsed.data.vehiclePlate;
   if (parsed.data.notificationSettings !== undefined) updates.notificationSettings = parsed.data.notificationSettings;
 
   const [user] = await db
@@ -175,6 +178,8 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
       address: user.address ?? undefined,
       taxNumber: user.taxNumber ?? undefined,
       vehicleTypes: user.vehicleTypes ?? undefined,
+      vehiclePlate: user.vehiclePlate ?? undefined,
+      isPhoneVerified: user.isPhoneVerified ?? false,
       notificationSettings: user.notificationSettings ?? undefined,
       createdAt: user.createdAt,
     })

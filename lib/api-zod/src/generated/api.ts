@@ -68,10 +68,24 @@ export const GetMeResponse = zod.object({
   address: zod.string().optional(),
   taxNumber: zod.string().optional(),
   vehicleTypes: zod.string().optional(),
+  vehiclePlate: zod.string().optional(),
+  isPhoneVerified: zod.boolean().optional(),
   notificationSettings: zod.string().optional(),
   rating: zod.number().optional(),
   totalShipments: zod.number().optional(),
   createdAt: zod.date(),
+});
+
+export const VerifyPhoneBody = zod.object({
+  phone: zod.string(),
+  code: zod.string().optional(),
+});
+
+export const VerifyPhoneResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+  devCode: zod.string().optional(),
+  isPhoneVerified: zod.boolean().optional(),
 });
 
 /**
@@ -243,6 +257,8 @@ export const GetUserResponse = zod.object({
   address: zod.string().optional(),
   taxNumber: zod.string().optional(),
   vehicleTypes: zod.string().optional(),
+  vehiclePlate: zod.string().optional(),
+  isPhoneVerified: zod.boolean().optional(),
   notificationSettings: zod.string().optional(),
   rating: zod.number().optional(),
   totalShipments: zod.number().optional(),
@@ -266,6 +282,8 @@ export const UpdateUserBody = zod.object({
   address: zod.string().optional(),
   taxNumber: zod.string().optional(),
   vehicleTypes: zod.string().optional(),
+  vehiclePlate: zod.string().optional(),
+  isPhoneVerified: zod.boolean().optional(),
   notificationSettings: zod.string().optional(),
 });
 
@@ -282,6 +300,8 @@ export const UpdateUserResponse = zod.object({
   address: zod.string().optional(),
   taxNumber: zod.string().optional(),
   vehicleTypes: zod.string().optional(),
+  vehiclePlate: zod.string().optional(),
+  isPhoneVerified: zod.boolean().optional(),
   notificationSettings: zod.string().optional(),
   rating: zod.number().optional(),
   totalShipments: zod.number().optional(),
@@ -335,6 +355,7 @@ export const ListLoadsResponse = zod.object({
           role: zod.enum(["admin", "corporate", "individual", "driver"]),
           status: zod.enum(["active", "suspended", "pending"]),
           company: zod.string().optional(),
+          address: zod.string().optional(),
           avatarUrl: zod.string().optional(),
           rating: zod.number().optional(),
           totalShipments: zod.number().optional(),
@@ -411,6 +432,7 @@ export const GetLoadResponse = zod.object({
       role: zod.enum(["admin", "corporate", "individual", "driver"]),
       status: zod.enum(["active", "suspended", "pending"]),
       company: zod.string().optional(),
+      address: zod.string().optional(),
       avatarUrl: zod.string().optional(),
       rating: zod.number().optional(),
       totalShipments: zod.number().optional(),
@@ -481,6 +503,7 @@ export const UpdateLoadResponse = zod.object({
       role: zod.enum(["admin", "corporate", "individual", "driver"]),
       status: zod.enum(["active", "suspended", "pending"]),
       company: zod.string().optional(),
+      address: zod.string().optional(),
       avatarUrl: zod.string().optional(),
       rating: zod.number().optional(),
       totalShipments: zod.number().optional(),
@@ -546,6 +569,7 @@ export const ListOffersResponse = zod.object({
               role: zod.enum(["admin", "corporate", "individual", "driver"]),
               status: zod.enum(["active", "suspended", "pending"]),
               company: zod.string().optional(),
+              address: zod.string().optional(),
               avatarUrl: zod.string().optional(),
               rating: zod.number().optional(),
               totalShipments: zod.number().optional(),

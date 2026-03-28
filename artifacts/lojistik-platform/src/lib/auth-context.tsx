@@ -22,6 +22,8 @@ export interface AuthUser {
   address?: string | null;
   taxNumber?: string | null;
   vehicleTypes?: string | null;
+  vehiclePlate?: string | null;
+  isPhoneVerified?: boolean;
   notificationSettings?: string | null;
 }
 
@@ -32,6 +34,7 @@ interface AuthContextType {
   isLoading: boolean;
   setToken: (token: string) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,6 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         address: data.address,
         taxNumber: data.taxNumber,
         vehicleTypes: data.vehicleTypes,
+        vehiclePlate: (data as { vehiclePlate?: string }).vehiclePlate,
+        isPhoneVerified: (data as { isPhoneVerified?: boolean }).isPhoneVerified ?? false,
         notificationSettings: data.notificationSettings,
       });
     } catch {
@@ -101,11 +106,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, [token]);
 
+  const refreshUser = useCallback(async () => {
+    if (token) await fetchMe(token);
+  }, [token, fetchMe]);
+
   const role: Role =
     user?.role === "individual" || user?.role === "driver" ? "driver" : (user?.role ?? null);
 
   return (
-    <AuthContext.Provider value={{ user, role, token, isLoading, setToken, logout }}>
+    <AuthContext.Provider value={{ user, role, token, isLoading, setToken, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
