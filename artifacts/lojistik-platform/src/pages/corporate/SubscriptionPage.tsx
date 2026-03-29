@@ -23,6 +23,7 @@ import {
   ChevronRight, Ban, RefreshCw, Download, FileText,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Plan {
@@ -145,6 +146,11 @@ function formatCardNumber(v: string) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function SubscriptionPage() {
   const { toast } = useToast();
+  const { token } = useAuth();
+
+  function authHeaders(extra?: Record<string, string>) {
+    return { Authorization: `Bearer ${token ?? ""}`, ...extra };
+  }
   const [, navigate] = useLocation();
   const search = useSearch();
   const searchParams = new URLSearchParams(search);
@@ -186,11 +192,18 @@ export default function SubscriptionPage() {
     }
   }, [paymentResult]);
 
-  function downloadInvoice(id: number, name: string) {
-    const link = document.createElement("a");
-    link.href = api(`/payment/invoices/${id}/download`);
-    link.download = name;
-    link.click();
+  async function downloadInvoice(id: number, name: string) {
+    try {
+      const res = await fetch(api(`/payment/invoices/${id}/download`), { headers: authHeaders() });
+      if (!res.ok) { toast({ title: "İndirme başarısız", variant: "destructive" }); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = name; a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "İndirme hatası", variant: "destructive" });
+    }
   }
 
   function fmtSize(b: number | null | undefined) {
@@ -204,10 +217,10 @@ export default function SubscriptionPage() {
     setLoading(true);
     try {
       const [plansRes, subRes, txnRes, invRes] = await Promise.all([
-        fetch(api("/payment/plans"), { credentials: "include" }),
-        fetch(api("/payment/subscription"), { credentials: "include" }),
-        fetch(api("/payment/transactions"), { credentials: "include" }),
-        fetch(api("/payment/invoices"), { credentials: "include" }),
+        fetch(api("/payment/plans"), { headers: authHeaders() }),
+        fetch(api("/payment/subscription"), { headers: authHeaders() }),
+        fetch(api("/payment/transactions"), { headers: authHeaders() }),
+        fetch(api("/payment/invoices"), { headers: authHeaders() }),
       ]);
       const plansData = await plansRes.json();
       const subData = await subRes.json();
@@ -241,9 +254,8 @@ export default function SubscriptionPage() {
     try {
       const returnUrl = `${window.location.origin}${BASE}api/payment/callback-3d`;
       const res = await fetch(api("/payment/initiate-3d"), {
-        credentials: "include",
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           planId: selectedPlan.id,
           cardOwner: cardForm.owner,
@@ -299,7 +311,7 @@ export default function SubscriptionPage() {
   async function cancelSubscription() {
     setCancelling(true);
     try {
-      const res = await fetch(api("/payment/cancel"), { method: "POST", credentials: "include" });
+      const res = await fetch(api("/payment/cancel"), { method: "POST", headers: authHeaders() });
       const data = await res.json();
       if (res.ok && data.success) {
         toast({ title: "Abonelik İptal Edildi", description: data.message });

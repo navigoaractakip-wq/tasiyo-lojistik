@@ -21,6 +21,7 @@ import {
   Trash2, RefreshCw, FileText, Users, CheckCircle2, X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
 
 const BASE = import.meta.env.BASE_URL;
 function api(path: string) { return `${BASE}api${path}`; }
@@ -73,6 +74,11 @@ interface User {
 
 export default function AdminBilling() {
   const { toast } = useToast();
+  const { token } = useAuth();
+
+  function authHeaders(extra?: Record<string, string>) {
+    return { Authorization: `Bearer ${token ?? ""}`, ...extra };
+  }
 
   // Plans state
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -105,9 +111,9 @@ export default function AdminBilling() {
     setLoading(true);
     try {
       const [plansRes, invoicesRes, usersRes] = await Promise.all([
-        fetch(api("/admin/plans"), { credentials: "include" }),
-        fetch(api("/admin/invoices"), { credentials: "include" }),
-        fetch(api("/users"), { credentials: "include" }),
+        fetch(api("/admin/plans"), { headers: authHeaders() }),
+        fetch(api("/admin/invoices"), { headers: authHeaders() }),
+        fetch(api("/users"), { headers: authHeaders() }),
       ]);
       const pd = await plansRes.json();
       const id = await invoicesRes.json();
@@ -139,8 +145,7 @@ export default function AdminBilling() {
     try {
       const res = await fetch(api(`/admin/plans/${editingPlan.id}`), {
         method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           name: planForm.name,
           price: Number(planForm.price),
@@ -178,7 +183,7 @@ export default function AdminBilling() {
     fd.append("description", uploadForm.description);
 
     try {
-      const res = await fetch(api("/admin/invoices"), { method: "POST", credentials: "include", body: fd });
+      const res = await fetch(api("/admin/invoices"), { method: "POST", headers: authHeaders(), body: fd });
       const data = await res.json();
       if (res.ok && data.success) {
         toast({ title: "Fatura Yüklendi", description: "Fatura başarıyla üyeye eklendi." });
@@ -199,7 +204,7 @@ export default function AdminBilling() {
   async function deleteInvoice(id: number) {
     if (!confirm("Bu faturayı silmek istediğinizden emin misiniz?")) return;
     try {
-      const res = await fetch(api(`/admin/invoices/${id}`), { method: "DELETE", credentials: "include" });
+      const res = await fetch(api(`/admin/invoices/${id}`), { method: "DELETE", headers: authHeaders() });
       if (res.ok) {
         toast({ title: "Fatura Silindi" });
         setInvoices(prev => prev.filter(i => i.id !== id));
@@ -209,11 +214,18 @@ export default function AdminBilling() {
     }
   }
 
-  function downloadInvoice(id: number, name: string) {
-    const link = document.createElement("a");
-    link.href = `${BASE}api/payment/invoices/${id}/download`;
-    link.download = name;
-    link.click();
+  async function downloadInvoice(id: number, name: string) {
+    try {
+      const res = await fetch(api(`/payment/invoices/${id}/download`), { headers: authHeaders() });
+      if (!res.ok) { toast({ title: "İndirme başarısız", variant: "destructive" }); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = name; a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "İndirme hatası", variant: "destructive" });
+    }
   }
 
   const planColors: Record<string, string> = {
