@@ -40,6 +40,7 @@ import CorporateTracking from "@/pages/corporate/CorporateTracking";
 import CorporateTeam from "@/pages/corporate/CorporateTeam";
 import CorporateSettings from "@/pages/corporate/CorporateSettings";
 import SubscriptionPage from "@/pages/corporate/SubscriptionPage";
+import CorporateLoadHistory from "@/pages/corporate/CorporateLoadHistory";
 
 // Driver
 import DriverFeed from "@/pages/driver/DriverFeed";
@@ -216,6 +217,11 @@ function Router() {
       <Route path="/dashboard/destek">
         <ProtectedRoute allowedRoles={["corporate"]}>
           <AppLayout><SupportPage /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/gecmis-ilanlar">
+        <ProtectedRoute allowedRoles={["corporate"]}>
+          <AppLayout><CorporateLoadHistory /></AppLayout>
         </ProtectedRoute>
       </Route>
 

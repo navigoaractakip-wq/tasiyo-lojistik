@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Package, Truck, Users, 
   MessageSquare, Settings, Bell, LogOut, 
   Menu, X, ShieldAlert, BarChart3, Map,
-  Search, FileText, ScrollText, HeadphonesIcon, UserCircle2, CreditCard,
+  Search, FileText, ScrollText, HeadphonesIcon, UserCircle2, CreditCard, Archive,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -243,6 +243,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     { href: "/dashboard", label: "Kontrol Paneli", icon: LayoutDashboard },
     { href: "/dashboard/create-load", label: "Yük Ver", icon: Package },
     { href: "/dashboard/offers", label: "Teklifler", icon: MessageSquare },
+    { href: "/dashboard/gecmis-ilanlar", label: "Geçmiş İlanlar", icon: Archive },
     { href: "/dashboard/tracking", label: "Canlı Takip", icon: Truck },
     { href: "/dashboard/team", label: "Ekibim", icon: Users },
     { href: "/dashboard/abonelik", label: "Abonelik", icon: CreditCard },
