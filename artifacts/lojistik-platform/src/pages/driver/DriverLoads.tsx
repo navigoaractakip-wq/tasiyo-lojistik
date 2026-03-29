@@ -20,7 +20,23 @@ import {
 const BASE = import.meta.env.BASE_URL;
 function api(path: string) { return `${BASE}api${path}`; }
 
-const PAID_DRIVER_PLANS = ["driver_professional", "driver_premium"];
+const TIER_ACCESS: Record<string, string[]> = {
+  driver_starter:      ["genel"],
+  driver_professional: ["genel", "profesyonel"],
+  driver_premium:      ["genel", "profesyonel", "premium"],
+};
+
+const TIER_LABEL: Record<string, string> = {
+  genel:       "Genel İlan",
+  profesyonel: "Profesyonel İlan",
+  premium:     "Premium İlan",
+};
+
+const TIER_COLOR: Record<string, string> = {
+  genel:       "from-blue-500 to-blue-600",
+  profesyonel: "from-violet-500 to-purple-600",
+  premium:     "from-yellow-400 to-orange-400",
+};
 
 type Load = {
   id: string;
@@ -35,6 +51,7 @@ type Load = {
   price?: number | null;
   status: string;
   isPremium?: boolean;
+  tier?: string;
   createdAt: string | Date;
   postedBy?: {
     id: string;
@@ -173,14 +190,21 @@ function OfferDialog({ load, onClose }: { load: Load; onClose: () => void }) {
   );
 }
 
-function PremiumLockCard({ load }: { load: Load }) {
+function TierLockCard({ load }: { load: Load }) {
+  const tier = load.tier ?? (load.isPremium ? "premium" : "genel");
+  const isProf = tier === "profesyonel";
+  const gradFrom = isProf ? "from-violet-500 to-purple-600" : "from-yellow-400 to-orange-400";
+  const btnClass = isProf ? "bg-violet-600 hover:bg-violet-700" : "bg-orange-500 hover:bg-orange-600";
+  const lockMsg = isProf
+    ? "Bu ilanı görmek için Profesyonel veya Premium plan gerekir"
+    : "Bu ilanı görmek için Premium plan gerekir";
+
   return (
     <Card className="shadow-sm border-0 overflow-hidden relative">
-      {/* blurred preview */}
       <CardContent className="p-0">
-        <div className="bg-gradient-to-r from-yellow-400 to-orange-400 px-3 py-1 flex items-center gap-1">
+        <div className={`bg-gradient-to-r ${gradFrom} px-3 py-1 flex items-center gap-1`}>
           <Star className="w-3 h-3 text-white fill-white" />
-          <span className="text-[11px] text-white font-semibold">Premium İlan</span>
+          <span className="text-[11px] text-white font-semibold">{TIER_LABEL[tier] ?? tier}</span>
         </div>
         <div className="p-4 blur-sm select-none pointer-events-none">
           <div className="flex items-start justify-between mb-3">
@@ -204,17 +228,14 @@ function PremiumLockCard({ load }: { load: Load }) {
           </div>
         </div>
       </CardContent>
-      {/* lock overlay */}
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm rounded-xl">
-        <div className="bg-orange-500 text-white rounded-full p-2 mb-2 shadow">
+        <div className={`${isProf ? "bg-violet-600" : "bg-orange-500"} text-white rounded-full p-2 mb-2 shadow`}>
           <Lock className="w-5 h-5" />
         </div>
-        <p className="text-sm font-semibold text-slate-800 mb-0.5">Premium İlan</p>
-        <p className="text-xs text-slate-500 text-center px-4 mb-3">
-          Bu ilanı görmek için Profesyonel veya Premium plan gerekir
-        </p>
+        <p className="text-sm font-semibold text-slate-800 mb-0.5">{TIER_LABEL[tier] ?? tier}</p>
+        <p className="text-xs text-slate-500 text-center px-4 mb-3">{lockMsg}</p>
         <a href="/driver/abonelik">
-          <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white h-7 px-4 text-xs">
+          <Button size="sm" className={`${btnClass} text-white h-7 px-4 text-xs`}>
             <Crown className="w-3.5 h-3.5 mr-1" /> Plana Geç
           </Button>
         </a>
@@ -228,7 +249,7 @@ export default function DriverLoads() {
   const [vehicleFilter, setVehicleFilter] = useState("Tümü");
   const [showFilters, setShowFilters] = useState(false);
   const [offerLoad, setOfferLoad] = useState<Load | null>(null);
-  const [hasPaidPlan, setHasPaidPlan] = useState(false);
+  const [driverPlan, setDriverPlan] = useState<string>("driver_starter");
   const [subLoaded, setSubLoaded] = useState(false);
 
   const { token } = useAuth();
@@ -240,11 +261,17 @@ export default function DriverLoads() {
       .then(r => r.json())
       .then(d => {
         const sub = d.subscription;
-        setHasPaidPlan(sub?.status === "active" && PAID_DRIVER_PLANS.includes(sub?.plan));
+        if (sub?.status === "active" && sub?.plan) {
+          setDriverPlan(sub.plan);
+        } else {
+          setDriverPlan("driver_starter");
+        }
       })
       .catch(() => {})
       .finally(() => setSubLoaded(true));
   }, [token]);
+
+  const accessibleTiers = TIER_ACCESS[driverPlan] ?? ["genel"];
 
   const allLoads: Load[] = (data?.loads ?? []) as Load[];
   const filtered = allLoads.filter(l => {
@@ -254,8 +281,13 @@ export default function DriverLoads() {
     return matchSearch && matchVehicle;
   });
 
-  const premiumCount = allLoads.filter(l => l.isPremium).length;
-  const showUpgradeBanner = subLoaded && !hasPaidPlan && premiumCount > 0;
+  const lockedCount = subLoaded
+    ? allLoads.filter(l => {
+        const tier = l.tier ?? (l.isPremium ? "premium" : "genel");
+        return !accessibleTiers.includes(tier);
+      }).length
+    : 0;
+  const showUpgradeBanner = subLoaded && lockedCount > 0 && driverPlan !== "driver_premium";
 
   return (
     <div className="bg-gray-50 min-h-full">
@@ -308,20 +340,22 @@ export default function DriverLoads() {
 
       {/* Upgrade Banner */}
       {showUpgradeBanner && (
-        <div className="mx-4 mt-3 bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl p-4 flex items-center gap-3 shadow">
+        <div className="mx-4 mt-3 bg-gradient-to-r from-violet-600 to-orange-500 rounded-2xl p-4 flex items-center gap-3 shadow">
           <div className="bg-white/20 rounded-full p-2">
             <Zap className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1">
             <p className="text-white font-semibold text-sm">
-              {premiumCount} premium ilan kilitli
+              {lockedCount} ilan abonelik gerektiriyor
             </p>
-            <p className="text-orange-100 text-xs">
-              Profesyonel plan ile tüm ilanları görün
+            <p className="text-white/80 text-xs">
+              {driverPlan === "driver_starter"
+                ? "Profesyonel veya Premium planla daha fazla ilan görün"
+                : "Premium planla tüm ilanları görün"}
             </p>
           </div>
           <a href="/driver/abonelik">
-            <Button size="sm" className="bg-white text-orange-600 hover:bg-orange-50 h-8 px-3 text-xs font-bold">
+            <Button size="sm" className="bg-white text-violet-700 hover:bg-violet-50 h-8 px-3 text-xs font-bold">
               Yükselt
             </Button>
           </a>
@@ -344,17 +378,18 @@ export default function DriverLoads() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-4">
             {filtered.map(load => {
-              const isLocked = load.isPremium && !hasPaidPlan;
+              const tier = load.tier ?? (load.isPremium ? "premium" : "genel");
+              const isLocked = !accessibleTiers.includes(tier);
               if (isLocked) {
-                return <PremiumLockCard key={load.id} load={load} />;
+                return <TierLockCard key={load.id} load={load} />;
               }
               return (
                 <Card key={load.id} className="shadow-sm border-0 overflow-hidden">
                   <CardContent className="p-0">
-                    {load.isPremium && (
-                      <div className="bg-gradient-to-r from-yellow-400 to-orange-400 px-3 py-1 flex items-center gap-1">
+                    {tier !== "genel" && (
+                      <div className={`bg-gradient-to-r ${TIER_COLOR[tier] ?? "from-blue-500 to-blue-600"} px-3 py-1 flex items-center gap-1`}>
                         <Star className="w-3 h-3 text-white fill-white" />
-                        <span className="text-[11px] text-white font-semibold">Premium İlan</span>
+                        <span className="text-[11px] text-white font-semibold">{TIER_LABEL[tier] ?? tier}</span>
                       </div>
                     )}
                     <div className="p-4">

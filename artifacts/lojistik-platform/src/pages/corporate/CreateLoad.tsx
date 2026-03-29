@@ -14,7 +14,41 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import {
   MapPin, Truck, Calendar, DollarSign, Scale, FileText, Plus, X, ArrowDown, Clock, Link,
+  Users, Zap, Crown,
 } from "lucide-react";
+
+const TIER_OPTIONS = [
+  {
+    value: "genel",
+    label: "Genel İlan",
+    desc: "Tüm sürücüler görebilir",
+    icon: Users,
+    color: "border-blue-200 bg-blue-50",
+    activeColor: "border-blue-500 bg-blue-50 ring-2 ring-blue-300",
+    iconColor: "text-blue-600",
+    badge: "bg-blue-100 text-blue-700",
+  },
+  {
+    value: "profesyonel",
+    label: "Profesyonel İlan",
+    desc: "Profesyonel veya Premium aboneler",
+    icon: Zap,
+    color: "border-violet-200 bg-violet-50",
+    activeColor: "border-violet-500 bg-violet-50 ring-2 ring-violet-300",
+    iconColor: "text-violet-600",
+    badge: "bg-violet-100 text-violet-700",
+  },
+  {
+    value: "premium",
+    label: "Premium İlan",
+    desc: "Yalnızca Premium aboneler",
+    icon: Crown,
+    color: "border-amber-200 bg-amber-50",
+    activeColor: "border-amber-500 bg-amber-50 ring-2 ring-amber-300",
+    iconColor: "text-amber-600",
+    badge: "bg-amber-100 text-amber-700",
+  },
+] as const;
 
 const formSchema = z.object({
   title: z.string().min(5, "Başlık en az 5 karakter olmalıdır"),
@@ -37,7 +71,8 @@ export default function CreateLoad() {
   const createMutation = useCreateLoad();
 
   const [pickupStops, setPickupStops] = useState<string[]>([""]);
-  const [deliveryStops, setDeliveryStops] = useState<string[]>([""]);
+  const [deliveryStops, setDeliveryStops] = useState<string[]>([""])
+  const [tier, setTier] = useState<"genel" | "profesyonel" | "premium">("genel");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -98,6 +133,7 @@ export default function CreateLoad() {
           deliveryDate: values.deliveryDate || undefined,
           pickupTime: values.pickupTime || undefined,
           pickupMapUrl: values.pickupMapUrl || undefined,
+          tier,
         } as any,
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/loads"] });
@@ -123,6 +159,48 @@ export default function CreateLoad() {
         <h1 className="text-2xl font-bold font-display tracking-tight text-foreground">Yeni İlan Oluştur</h1>
         <p className="text-muted-foreground">İhtiyacınız olan aracı bulmak için ilan detaylarını eksiksiz doldurun.</p>
       </div>
+
+      {/* ─── İlan Tipi Seçimi ─── */}
+      <Card className="border-border/50 shadow-sm overflow-hidden">
+        <div className="bg-primary/5 px-6 py-4 border-b border-border/50 flex items-center gap-3">
+          <Crown className="h-5 w-5 text-primary" />
+          <div>
+            <h2 className="text-lg font-bold text-primary">İlan Tipi</h2>
+            <p className="text-xs text-muted-foreground">Hangi sürücülerin bu ilanı görebileceğini seçin</p>
+          </div>
+        </div>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {TIER_OPTIONS.map(opt => {
+              const Icon = opt.icon;
+              const isActive = tier === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setTier(opt.value)}
+                  className={`relative flex flex-col items-start p-4 rounded-xl border-2 text-left transition-all ${
+                    isActive ? opt.activeColor : opt.color + " hover:border-opacity-60"
+                  }`}
+                >
+                  {isActive && (
+                    <span className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                  )}
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-3 ${opt.badge}`}>
+                    <Icon className={`w-5 h-5 ${opt.iconColor}`} />
+                  </div>
+                  <p className="font-semibold text-sm text-foreground">{opt.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{opt.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">

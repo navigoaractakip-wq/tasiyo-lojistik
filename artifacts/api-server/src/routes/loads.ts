@@ -29,6 +29,7 @@ function mapLoad(load: typeof loadsTable.$inferSelect, poster?: typeof usersTabl
     maxBid: load.maxBid ?? undefined,
     status: load.status as "active" | "pending" | "assigned" | "completed" | "cancelled",
     isPremium: load.isPremium ?? false,
+    tier: (load.tier ?? "genel") as "genel" | "profesyonel" | "premium",
     postedBy: poster
       ? {
           id: String(poster.id),
@@ -135,6 +136,7 @@ router.post("/loads", optionalAuth, async (req: AuthRequest, res): Promise<void>
       waypoints: (d as any).waypoints ?? null,
       pickupTime: d.pickupTime ?? null,
       pickupMapUrl: d.pickupMapUrl ?? null,
+      tier: (d as any).tier ?? "genel",
     })
     .returning();
 

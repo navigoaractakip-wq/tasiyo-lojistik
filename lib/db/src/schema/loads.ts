@@ -18,6 +18,7 @@ export const loadsTable = pgTable("loads", {
   maxBid: real("max_bid"),
   status: text("status").notNull().default("active"),
   isPremium: boolean("is_premium").default(false),
+  tier: text("tier").notNull().default("genel"),
   postedById: integer("posted_by_id"),
   offersCount: integer("offers_count").default(0),
   pickupDate: timestamp("pickup_date", { withTimezone: true }),

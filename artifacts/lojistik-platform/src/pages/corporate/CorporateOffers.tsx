@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -14,8 +15,9 @@ import {
 import {
   MessageSquare, Search, CheckCircle2, XCircle, Clock,
   Star, Truck, Package, TrendingDown, Loader2, Phone, Mail,
-  AlertTriangle, Undo2,
+  AlertTriangle, Undo2, ThumbsUp,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 
 type OfferStatus = "pending" | "accepted" | "rejected" | "withdrawn";
@@ -27,12 +29,28 @@ const STATUS_MAP: Record<string, { label: string; variant: "secondary" | "defaul
   withdrawn: { label: "Geri Çekildi",  variant: "outline",     icon: <Undo2 className="w-3 h-3" /> },
 };
 
+const BASE = import.meta.env.BASE_URL;
+function api(path: string) { return `${BASE}api${path}`; }
+
+interface RatingTarget {
+  offerId: string;
+  driverName: string;
+  driverAvatarUrl?: string;
+}
+
 export default function CorporateOffers() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [ratingTarget, setRatingTarget] = useState<RatingTarget | null>(null);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState("");
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [ratedOfferIds, setRatedOfferIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  const { token } = useAuth();
   const queryClient = useQueryClient();
 
   const { data, isLoading, refetch } = useListOffers({ mine: "true" } as any);
@@ -140,6 +158,44 @@ export default function CorporateOffers() {
     } finally {
       setIsCancelling(false);
       setCancelTarget(null);
+    }
+  };
+
+  const openRatingModal = (offer: any) => {
+    setRatingTarget({
+      offerId: offer.id,
+      driverName: offer.driverName,
+      driverAvatarUrl: offer.driverAvatarUrl,
+    });
+    setSelectedRating(0);
+    setHoverRating(0);
+    setRatingComment("");
+  };
+
+  const submitRating = async () => {
+    if (!ratingTarget || selectedRating === 0) return;
+    setIsSubmittingRating(true);
+    try {
+      const res = await fetch(api(`/offers/${ratingTarget.offerId}/review`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ rating: selectedRating, comment: ratingComment }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Puan gönderilemedi");
+      setRatedOfferIds(prev => new Set([...prev, ratingTarget.offerId]));
+      toast({
+        title: "Puan Gönderildi",
+        description: `${ratingTarget.driverName} için ${selectedRating} yıldız puanınız kaydedildi.`,
+      });
+      setRatingTarget(null);
+    } catch (e: any) {
+      toast({ title: "Hata", description: e.message, variant: "destructive" });
+    } finally {
+      setIsSubmittingRating(false);
     }
   };
 
@@ -359,17 +415,34 @@ export default function CorporateOffers() {
                     )}
 
                     {isAccepted && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className={`gap-1 text-xs ${canCancel ? "border-orange-200 text-orange-600 hover:bg-orange-50" : "opacity-50 cursor-not-allowed"}`}
-                        disabled={!canCancel}
-                        title={!canCancel ? "Yükleme gününe 1 günden az kaldığı için iptal edilemez" : ""}
-                        onClick={() => canCancel && setCancelTarget(offer.id)}
-                      >
-                        <Undo2 className="w-3.5 h-3.5" />
-                        Kabulü İptal Et
-                      </Button>
+                      <div className="flex flex-col gap-2">
+                        {ratedOfferIds.has(offer.id) ? (
+                          <div className="flex items-center gap-1.5 text-xs text-green-600 bg-green-50 border border-green-100 rounded-lg px-3 py-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                            <span className="font-medium">Puan verildi</span>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs"
+                            onClick={() => openRatingModal(offer)}
+                          >
+                            <Star className="w-3.5 h-3.5" />
+                            Şoförü Puanla
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className={`gap-1 text-xs ${canCancel ? "border-orange-200 text-orange-600 hover:bg-orange-50" : "opacity-50 cursor-not-allowed"}`}
+                          disabled={!canCancel}
+                          title={!canCancel ? "Yükleme gününe 1 günden az kaldığı için iptal edilemez" : ""}
+                          onClick={() => canCancel && setCancelTarget(offer.id)}
+                        >
+                          <Undo2 className="w-3.5 h-3.5" />
+                          Kabulü İptal Et
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -425,6 +498,98 @@ export default function CorporateOffers() {
               {isCancelling
                 ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> İşleniyor…</>
                 : <><Undo2 className="w-4 h-4 mr-2" /> İptal Et</>
+              }
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rating Dialog */}
+      <Dialog open={!!ratingTarget} onOpenChange={open => !open && setRatingTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <Star className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <DialogTitle>Şoförü Puanla</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  {ratingTarget?.driverName} için puan verin
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {ratingTarget?.driverAvatarUrl && (
+            <div className="flex justify-center mb-2">
+              <Avatar className="h-16 w-16 border-2 border-amber-200 shadow">
+                <AvatarImage src={ratingTarget.driverAvatarUrl} className="object-cover" />
+                <AvatarFallback className="bg-amber-50 text-amber-700 font-bold text-lg">
+                  {ratingTarget.driverName.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          )}
+
+          <div className="text-center">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Kaç yıldız?</p>
+            <div className="flex justify-center gap-2 mb-4">
+              {[1, 2, 3, 4, 5].map(star => (
+                <button
+                  key={star}
+                  type="button"
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  onClick={() => setSelectedRating(star)}
+                  className="transition-transform hover:scale-110 active:scale-95"
+                >
+                  <Star
+                    className={`w-9 h-9 transition-colors ${
+                      star <= (hoverRating || selectedRating)
+                        ? "text-amber-400 fill-amber-400"
+                        : "text-gray-300"
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+            {selectedRating > 0 && (
+              <p className="text-sm font-semibold text-amber-600 mb-3">
+                {["", "Çok Kötü", "Kötü", "Orta", "İyi", "Mükemmel"][selectedRating]} ({selectedRating}/5)
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Yorum (opsiyonel)</label>
+            <Textarea
+              value={ratingComment}
+              onChange={e => setRatingComment(e.target.value)}
+              placeholder="Sürücü hakkında görüşünüzü yazın..."
+              className="resize-none h-20 text-sm rounded-xl"
+              maxLength={300}
+            />
+            <p className="text-xs text-muted-foreground text-right">{ratingComment.length}/300</p>
+          </div>
+
+          <DialogFooter className="gap-2 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setRatingTarget(null)}
+              disabled={isSubmittingRating}
+              className="flex-1"
+            >
+              Vazgeç
+            </Button>
+            <Button
+              onClick={submitRating}
+              disabled={selectedRating === 0 || isSubmittingRating}
+              className="flex-1 bg-amber-500 hover:bg-amber-600 text-white gap-1.5"
+            >
+              {isSubmittingRating
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Gönderiliyor…</>
+                : <><ThumbsUp className="w-4 h-4" /> Puanı Gönder</>
               }
             </Button>
           </DialogFooter>
