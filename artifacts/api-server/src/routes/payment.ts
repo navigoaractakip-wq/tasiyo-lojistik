@@ -49,9 +49,12 @@ async function paynetPost(path: string, body: Record<string, unknown>, secretKey
   return response.json() as Promise<Record<string, unknown>>;
 }
 
-// ── GET /payment/plans ───────────────────────────────────────────────────────
-router.get("/payment/plans", async (_req, res) => {
-  const plans = await getPlansFromDb();
+// ── GET /payment/plans?role=corporate|driver ──────────────────────────────────
+router.get("/payment/plans", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  const roleParam = req.query.role as string | undefined;
+  const userRole = req.userRole;
+  const role = roleParam ?? (userRole === "driver" ? "driver" : "corporate");
+  const plans = await getPlansFromDb(role);
   res.json({ plans });
 });
 

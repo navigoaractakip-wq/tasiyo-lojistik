@@ -37,6 +37,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       { href: "/driver/map", label: "Harita", icon: Map },
       { href: "/driver/offers", label: "Tekliflerim", icon: FileText },
       { href: "/driver/tracking", label: "Takip", icon: Truck },
+      { href: "/driver/abonelik", label: "Abonelik", icon: CreditCard },
       { href: "/driver/profil", label: "Profilim", icon: UserCircle2 },
       { href: "/driver/destek", label: "Destek", icon: HeadphonesIcon },
     ];

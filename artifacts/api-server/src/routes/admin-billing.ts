@@ -9,7 +9,7 @@ const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 // ── Default plan definitions (used for seeding) ───────────────────────────────
-const DEFAULT_PLANS = [
+const DEFAULT_CORPORATE_PLANS = [
   {
     planId: "starter",
     name: "Başlangıç",
@@ -19,6 +19,7 @@ const DEFAULT_PLANS = [
     badge: null,
     highlighted: "false",
     sortOrder: 0,
+    targetRole: "corporate",
   },
   {
     planId: "corporate",
@@ -29,6 +30,7 @@ const DEFAULT_PLANS = [
     badge: "Çok Tercih Edilen",
     highlighted: "true",
     sortOrder: 1,
+    targetRole: "corporate",
   },
   {
     planId: "premium",
@@ -39,22 +41,72 @@ const DEFAULT_PLANS = [
     badge: "En Kapsamlı",
     highlighted: "false",
     sortOrder: 2,
+    targetRole: "corporate",
+  },
+];
+
+const DEFAULT_DRIVER_PLANS = [
+  {
+    planId: "driver_starter",
+    name: "Ücretsiz",
+    price: 0,
+    currency: "TRY",
+    features: JSON.stringify(["Temel ilanları görüntüle", "Teklif gönder", "Temel destek", "Standart listeleme"]),
+    badge: null,
+    highlighted: "false",
+    sortOrder: 0,
+    targetRole: "driver",
+  },
+  {
+    planId: "driver_professional",
+    name: "Profesyonel",
+    price: 999,
+    currency: "TRY",
+    features: JSON.stringify(["Kurumsal ilanları görüntüle", "Premium ilanları görüntüle", "Öncelikli teklif sıralaması", "Öncelikli destek", "Gelişmiş profil"]),
+    badge: "Çok Tercih Edilen",
+    highlighted: "true",
+    sortOrder: 1,
+    targetRole: "driver",
+  },
+  {
+    planId: "driver_premium",
+    name: "Premium",
+    price: 1999,
+    currency: "TRY",
+    features: JSON.stringify(["Kurumsal ilanları görüntüle", "Premium ilanları görüntüle", "Öncelikli teklif sıralaması", "7/24 özel destek", "Gelişmiş profil", "Öne çıkan sürücü rozeti", "Aylık performans raporu"]),
+    badge: "En Kapsamlı",
+    highlighted: "false",
+    sortOrder: 2,
+    targetRole: "driver",
   },
 ];
 
 // ── Helper: ensure default plans exist in DB ──────────────────────────────────
 export async function ensureDefaultPlans() {
   const existing = await db.select().from(planConfigsTable);
-  if (existing.length === 0) {
-    await db.insert(planConfigsTable).values(DEFAULT_PLANS);
+  const existingIds = new Set(existing.map(r => r.planId));
+
+  const toInsert = [...DEFAULT_CORPORATE_PLANS, ...DEFAULT_DRIVER_PLANS].filter(p => !existingIds.has(p.planId));
+  if (toInsert.length > 0) {
+    await db.insert(planConfigsTable).values(toInsert);
+  }
+
+  // Back-fill targetRole for old corporate plans that have no targetRole yet
+  for (const row of existing) {
+    if (!row.targetRole || row.targetRole === "") {
+      await db.update(planConfigsTable)
+        .set({ targetRole: "corporate" })
+        .where(eq(planConfigsTable.planId, row.planId));
+    }
   }
 }
 
-// ── Helper: read plans from DB ────────────────────────────────────────────────
-export async function getPlansFromDb() {
+// ── Helper: read plans from DB (optionally filtered by role) ──────────────────
+export async function getPlansFromDb(role?: string) {
   await ensureDefaultPlans();
   const rows = await db.select().from(planConfigsTable).orderBy(planConfigsTable.sortOrder);
-  return rows.map(r => ({
+  const filtered = role ? rows.filter(r => r.targetRole === role) : rows;
+  return filtered.map(r => ({
     id: r.planId,
     name: r.name,
     price: r.price,
@@ -64,6 +116,7 @@ export async function getPlansFromDb() {
     badge: r.badge,
     highlighted: r.highlighted === "true",
     sortOrder: r.sortOrder,
+    targetRole: r.targetRole,
   }));
 }
 
@@ -76,10 +129,11 @@ function requireAdmin(req: AuthRequest, res: any, next: any) {
   next();
 }
 
-// ── GET /admin/plans ──────────────────────────────────────────────────────────
+// ── GET /admin/plans?role=corporate|driver ─────────────────────────────────────
 router.get("/admin/plans", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   if (req.userRole !== "admin") { res.status(403).json({ error: "Yetkisiz." }); return; }
-  const plans = await getPlansFromDb();
+  const role = req.query.role as string | undefined;
+  const plans = await getPlansFromDb(role);
   res.json({ plans });
 });
 
@@ -111,7 +165,7 @@ router.put("/admin/plans/:planId", requireAuth, async (req: AuthRequest, res): P
     })
     .where(eq(planConfigsTable.planId, planId));
 
-  const plans = await getPlansFromDb();
+  const plans = await getPlansFromDb(existing.targetRole ?? "corporate");
   res.json({ success: true, plans });
 });
 
@@ -119,7 +173,12 @@ router.put("/admin/plans/:planId", requireAuth, async (req: AuthRequest, res): P
 router.get("/admin/invoices", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   if (req.userRole !== "admin") { res.status(403).json({ error: "Yetkisiz." }); return; }
 
-  const { userId } = req.query;
+  const { userId, userRole } = req.query;
+
+  let whereClause: any = undefined;
+  if (userId) {
+    whereClause = eq(invoicesTable.userId, Number(userId));
+  }
 
   const rows = await db.select({
     id: invoicesTable.id,
@@ -136,13 +195,17 @@ router.get("/admin/invoices", requireAuth, async (req: AuthRequest, res): Promis
     transactionId: invoicesTable.transactionId,
     userName: usersTable.name,
     userEmail: usersTable.email,
+    userRole: usersTable.role,
   })
     .from(invoicesTable)
     .leftJoin(usersTable, eq(invoicesTable.userId, usersTable.id))
-    .where(userId ? eq(invoicesTable.userId, Number(userId)) : undefined)
+    .where(whereClause)
     .orderBy(desc(invoicesTable.uploadedAt));
 
-  res.json({ invoices: rows });
+  // Filter by user role if requested
+  const filtered = userRole ? rows.filter(r => r.userRole === userRole) : rows;
+
+  res.json({ invoices: filtered });
 });
 
 // ── POST /admin/invoices ──────────────────────────────────────────────────────
@@ -157,7 +220,6 @@ router.post("/admin/invoices", requireAuth, upload.single("file"), async (req: A
     return;
   }
 
-  // Validate user exists
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, Number(userId))).limit(1);
   if (!user) {
     res.status(404).json({ error: "Kullanıcı bulunamadı." });

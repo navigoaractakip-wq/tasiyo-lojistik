@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useListLoads, useCreateOffer } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,17 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
 import {
   Search, MapPin, Weight, Truck, Clock, ChevronRight,
   SlidersHorizontal, Package, Star, CheckCircle2, Loader2, Building2,
+  Lock, Crown, Zap,
 } from "lucide-react";
+
+const BASE = import.meta.env.BASE_URL;
+function api(path: string) { return `${BASE}api${path}`; }
+
+const PAID_DRIVER_PLANS = ["driver_professional", "driver_premium"];
 
 type Load = {
   id: string;
@@ -96,7 +103,6 @@ function OfferDialog({ load, onClose }: { load: Load; onClose: () => void }) {
         <DialogDescription className="text-xs leading-relaxed">{load.title}</DialogDescription>
       </DialogHeader>
 
-      {/* Firma bilgisi */}
       {(load.postedBy?.company || load.postedBy?.address) && (
         <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 flex items-start gap-2 text-sm mb-1">
           <Building2 className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
@@ -167,13 +173,78 @@ function OfferDialog({ load, onClose }: { load: Load; onClose: () => void }) {
   );
 }
 
+function PremiumLockCard({ load }: { load: Load }) {
+  return (
+    <Card className="shadow-sm border-0 overflow-hidden relative">
+      {/* blurred preview */}
+      <CardContent className="p-0">
+        <div className="bg-gradient-to-r from-yellow-400 to-orange-400 px-3 py-1 flex items-center gap-1">
+          <Star className="w-3 h-3 text-white fill-white" />
+          <span className="text-[11px] text-white font-semibold">Premium İlan</span>
+        </div>
+        <div className="p-4 blur-sm select-none pointer-events-none">
+          <div className="flex items-start justify-between mb-3">
+            <h3 className="font-semibold text-sm leading-tight pr-2">{load.title}</h3>
+            <Badge variant="outline" className="text-xs shrink-0">{load.loadType}</Badge>
+          </div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex flex-col items-center gap-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              <div className="w-px h-4 bg-gray-200" />
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+            </div>
+            <div className="text-xs space-y-1 flex-1">
+              <p className="text-gray-700">{load.origin}</p>
+              <p className="text-gray-700">{load.destination}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            {load.weight != null && <span>{load.weight} ton</span>}
+            <span>{load.vehicleType}</span>
+          </div>
+        </div>
+      </CardContent>
+      {/* lock overlay */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm rounded-xl">
+        <div className="bg-orange-500 text-white rounded-full p-2 mb-2 shadow">
+          <Lock className="w-5 h-5" />
+        </div>
+        <p className="text-sm font-semibold text-slate-800 mb-0.5">Premium İlan</p>
+        <p className="text-xs text-slate-500 text-center px-4 mb-3">
+          Bu ilanı görmek için Profesyonel veya Premium plan gerekir
+        </p>
+        <a href="/driver/abonelik">
+          <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white h-7 px-4 text-xs">
+            <Crown className="w-3.5 h-3.5 mr-1" /> Plana Geç
+          </Button>
+        </a>
+      </div>
+    </Card>
+  );
+}
+
 export default function DriverLoads() {
   const [search, setSearch] = useState("");
   const [vehicleFilter, setVehicleFilter] = useState("Tümü");
   const [showFilters, setShowFilters] = useState(false);
   const [offerLoad, setOfferLoad] = useState<Load | null>(null);
+  const [hasPaidPlan, setHasPaidPlan] = useState(false);
+  const [subLoaded, setSubLoaded] = useState(false);
 
+  const { token } = useAuth();
   const { data, isLoading } = useListLoads({ status: "active" });
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(api("/payment/subscription"), { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        const sub = d.subscription;
+        setHasPaidPlan(sub?.status === "active" && PAID_DRIVER_PLANS.includes(sub?.plan));
+      })
+      .catch(() => {})
+      .finally(() => setSubLoaded(true));
+  }, [token]);
 
   const allLoads: Load[] = (data?.loads ?? []) as Load[];
   const filtered = allLoads.filter(l => {
@@ -182,6 +253,9 @@ export default function DriverLoads() {
     const matchVehicle = vehicleFilter === "Tümü" || l.vehicleType === vehicleFilter;
     return matchSearch && matchVehicle;
   });
+
+  const premiumCount = allLoads.filter(l => l.isPremium).length;
+  const showUpgradeBanner = subLoaded && !hasPaidPlan && premiumCount > 0;
 
   return (
     <div className="bg-gray-50 min-h-full">
@@ -232,6 +306,28 @@ export default function DriverLoads() {
         </div>
       )}
 
+      {/* Upgrade Banner */}
+      {showUpgradeBanner && (
+        <div className="mx-4 mt-3 bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl p-4 flex items-center gap-3 shadow">
+          <div className="bg-white/20 rounded-full p-2">
+            <Zap className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-white font-semibold text-sm">
+              {premiumCount} premium ilan kilitli
+            </p>
+            <p className="text-orange-100 text-xs">
+              Profesyonel plan ile tüm ilanları görün
+            </p>
+          </div>
+          <a href="/driver/abonelik">
+            <Button size="sm" className="bg-white text-orange-600 hover:bg-orange-50 h-8 px-3 text-xs font-bold">
+              Yükselt
+            </Button>
+          </a>
+        </div>
+      )}
+
       {/* Loads List */}
       <div className="px-4 mt-3">
         {isLoading ? (
@@ -246,69 +342,75 @@ export default function DriverLoads() {
             </p>
           </div>
         ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {filtered.map(load => (
-          <Card key={load.id} className="shadow-sm border-0 overflow-hidden">
-            <CardContent className="p-0">
-              {load.isPremium && (
-                <div className="bg-gradient-to-r from-yellow-400 to-orange-400 px-3 py-1 flex items-center gap-1">
-                  <Star className="w-3 h-3 text-white fill-white" />
-                  <span className="text-[11px] text-white font-semibold">Premium İlan</span>
-                </div>
-              )}
-              <div className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <h3 className="font-semibold text-sm leading-tight pr-2">{load.title}</h3>
-                  <Badge variant="outline" className="text-xs shrink-0">{load.loadType}</Badge>
-                </div>
-
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="flex flex-col items-center gap-0.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    <div className="w-px h-4 bg-gray-200" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  </div>
-                  <div className="text-xs space-y-1 flex-1">
-                    <p className="text-gray-700">{load.origin}</p>
-                    <p className="text-gray-700">{load.destination}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
-                  {load.weight != null && (
-                    <div className="flex items-center gap-1"><Weight className="w-3.5 h-3.5" />{load.weight} ton</div>
-                  )}
-                  <div className="flex items-center gap-1"><Truck className="w-3.5 h-3.5" />{load.vehicleType}</div>
-                  {load.distance != null && (
-                    <div className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{load.distance} km</div>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {load.pricingModel === "bidding" ? (
-                      <span className="text-blue-600 font-semibold text-sm">Açık Teklif</span>
-                    ) : (
-                      <span className="text-green-600 font-bold text-base">{load.price?.toLocaleString("tr-TR")} ₺</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-4">
+            {filtered.map(load => {
+              const isLocked = load.isPremium && !hasPaidPlan;
+              if (isLocked) {
+                return <PremiumLockCard key={load.id} load={load} />;
+              }
+              return (
+                <Card key={load.id} className="shadow-sm border-0 overflow-hidden">
+                  <CardContent className="p-0">
+                    {load.isPremium && (
+                      <div className="bg-gradient-to-r from-yellow-400 to-orange-400 px-3 py-1 flex items-center gap-1">
+                        <Star className="w-3 h-3 text-white fill-white" />
+                        <span className="text-[11px] text-white font-semibold">Premium İlan</span>
+                      </div>
                     )}
-                    <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                      <Clock className="w-3 h-3" />
-                      {new Date(load.createdAt).toLocaleDateString("tr-TR")}
-                    </span>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="h-8 px-4 rounded-xl gap-1"
-                    onClick={() => setOfferLoad(load)}
-                  >
-                    Teklif Ver <ChevronRight className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        </div>
+                    <div className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="font-semibold text-sm leading-tight pr-2">{load.title}</h3>
+                        <Badge variant="outline" className="text-xs shrink-0">{load.loadType}</Badge>
+                      </div>
+
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                          <div className="w-px h-4 bg-gray-200" />
+                          <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                        </div>
+                        <div className="text-xs space-y-1 flex-1">
+                          <p className="text-gray-700">{load.origin}</p>
+                          <p className="text-gray-700">{load.destination}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+                        {load.weight != null && (
+                          <div className="flex items-center gap-1"><Weight className="w-3.5 h-3.5" />{load.weight} ton</div>
+                        )}
+                        <div className="flex items-center gap-1"><Truck className="w-3.5 h-3.5" />{load.vehicleType}</div>
+                        {load.distance != null && (
+                          <div className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{load.distance} km</div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {load.pricingModel === "bidding" ? (
+                            <span className="text-blue-600 font-semibold text-sm">Açık Teklif</span>
+                          ) : (
+                            <span className="text-green-600 font-bold text-base">{load.price?.toLocaleString("tr-TR")} ₺</span>
+                          )}
+                          <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                            <Clock className="w-3 h-3" />
+                            {new Date(load.createdAt).toLocaleDateString("tr-TR")}
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="h-8 px-4 rounded-xl gap-1"
+                          onClick={() => setOfferLoad(load)}
+                        >
+                          Teklif Ver <ChevronRight className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
       </div>
 

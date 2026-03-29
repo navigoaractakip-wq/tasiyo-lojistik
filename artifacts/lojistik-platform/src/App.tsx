@@ -48,6 +48,7 @@ import DriverMap from "@/pages/driver/DriverMap";
 import DriverTracking from "@/pages/driver/DriverTracking";
 import DriverOffers from "@/pages/driver/DriverOffers";
 import DriverProfile from "@/pages/driver/DriverProfile";
+import DriverSubscriptionPage from "@/pages/driver/DriverSubscriptionPage";
 
 const queryClient = new QueryClient();
 
@@ -252,6 +253,11 @@ function Router() {
       <Route path="/driver/destek">
         <ProtectedRoute allowedRoles={["driver"]}>
           <AppLayout><SupportPage /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/driver/abonelik">
+        <ProtectedRoute allowedRoles={["driver"]}>
+          <AppLayout><DriverSubscriptionPage /></AppLayout>
         </ProtectedRoute>
       </Route>
 

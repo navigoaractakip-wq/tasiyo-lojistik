@@ -10,6 +10,7 @@ export const planConfigsTable = pgTable("plan_configs", {
   badge: text("badge"),
   highlighted: text("highlighted").notNull().default("false"),
   sortOrder: integer("sort_order").notNull().default(0),
+  targetRole: text("target_role").notNull().default("corporate"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
