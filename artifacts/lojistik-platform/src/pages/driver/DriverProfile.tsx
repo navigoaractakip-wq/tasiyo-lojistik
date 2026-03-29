@@ -26,9 +26,6 @@ const VEHICLE_OPTIONS = [
 const DRIVER_DOC_TYPES = [
   { key: "k1",   label: "K1 Belgesi",   desc: "Tehlikeli madde taşıma" },
   { key: "src1", label: "SRC 1",        desc: "Tehlikeli madde taşıma" },
-  { key: "src2", label: "SRC 2",        desc: "Yolcu taşıma" },
-  { key: "src3", label: "SRC 3",        desc: "Karayolu yük taşıma" },
-  { key: "src4", label: "SRC 4",        desc: "Ticari araç kullanma" },
   { key: "src5", label: "SRC 5",        desc: "Taksi / kiralık araç" },
   { key: "adr",  label: "ADR",          desc: "Tehlikeli madde (avrupa)" },
   { key: "psikoteknik", label: "Psikoteknik", desc: "Psikolojik yeterlilik" },

@@ -42,9 +42,14 @@ const DEFAULT_NOTIF: NotifState = {
 };
 
 export default function CorporateSettings() {
-  const { user } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [otpStep, setOtpStep] = useState<"idle" | "sent" | "verified">("idle");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [devCode, setDevCode] = useState<string | null>(null);
 
   const [profile, setProfile] = useState({
     companyName: "",
@@ -139,6 +144,55 @@ export default function CorporateSettings() {
 
   const toggleNotification = (key: keyof NotifState) => {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSendOtp = async () => {
+    if (!profile.phone && !user?.phone) {
+      toast({ title: "Telefon gerekli", description: "Önce bir telefon numarası girin ve kaydedin.", variant: "destructive" });
+      return;
+    }
+    setOtpLoading(true);
+    try {
+      const res = await fetch("/api/auth/send-phone-otp", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Kod gönderilemedi");
+      setOtpStep("sent");
+      setOtpCode("");
+      setDevCode(data.devCode ?? null);
+      toast({ title: "Kod gönderildi", description: data.message });
+    } catch (e: any) {
+      toast({ title: "Hata", description: e.message, variant: "destructive" });
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpCode.length < 4) {
+      toast({ title: "Kod gerekli", description: "Lütfen doğrulama kodunu girin.", variant: "destructive" });
+      return;
+    }
+    setOtpLoading(true);
+    try {
+      const res = await fetch("/api/auth/verify-phone", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ code: otpCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Doğrulama başarısız");
+      setOtpStep("verified");
+      setDevCode(null);
+      await refreshUser();
+      toast({ title: "Telefon doğrulandı!", description: "Telefon numaranız başarıyla doğrulandı." });
+    } catch (e: any) {
+      toast({ title: "Hata", description: e.message, variant: "destructive" });
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
   const handleSave = () => {
@@ -270,6 +324,87 @@ export default function CorporateSettings() {
                   placeholder="+90 5xx xxx xx xx"
                 />
               </div>
+
+              {/* Phone verification block */}
+              {user?.isPhoneVerified ? (
+                <div className="flex items-center gap-2 mt-1.5 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span className="font-medium">Telefon numarası doğrulandı</span>
+                </div>
+              ) : (
+                <div className="mt-2 space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>Telefon numaranız henüz doğrulanmadı</span>
+                  </div>
+
+                  {otpStep === "idle" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSendOtp}
+                      disabled={otpLoading}
+                      className="gap-2 border-primary/40 text-primary hover:bg-primary/5"
+                    >
+                      {otpLoading
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Gönderiliyor…</>
+                        : <><Phone className="w-4 h-4" /> Doğrulama Kodu Gönder</>
+                      }
+                    </Button>
+                  )}
+
+                  {otpStep === "sent" && (
+                    <div className="space-y-2">
+                      {devCode && (
+                        <div className="text-xs bg-blue-50 border border-blue-200 text-blue-700 rounded-lg px-3 py-2 font-mono">
+                          Test kodu: <span className="font-bold text-base">{devCode}</span>
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          placeholder="6 haneli kod"
+                          value={otpCode}
+                          onChange={e => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                          className="w-36 text-center font-mono tracking-widest text-base"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleVerifyOtp}
+                          disabled={otpLoading || otpCode.length < 4}
+                          className="gap-2"
+                        >
+                          {otpLoading
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <CheckCircle2 className="w-4 h-4" />
+                          }
+                          Doğrula
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => { setOtpStep("idle"); setOtpCode(""); setDevCode(null); }}
+                          disabled={otpLoading}
+                          className="text-muted-foreground"
+                        >
+                          İptal
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Kodu almadınız mı?{" "}
+                        <button type="button" className="text-primary hover:underline" onClick={handleSendOtp} disabled={otpLoading}>
+                          Tekrar gönder
+                        </button>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Vergi No</Label>

@@ -54,27 +54,6 @@ export default function AdminUsers() {
     updateUser({ id: userId, data: { status: newStatus } });
   };
 
-  const handleVerifyPhone = async (userId: string) => {
-    setLoadingId(userId);
-    try {
-      const base = import.meta.env.BASE_URL ?? "/";
-      const res = await fetch(`${base}api/admin/users/${userId}/verify-phone`.replace(/\/+/g, "/").replace(":/", "://"), {
-        method: "PATCH",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? "İşlem başarısız");
-      }
-      queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
-      toast({ title: "Telefon doğrulandı", description: "Kullanıcının telefonu manuel olarak doğrulanmış işaretlendi." });
-    } catch (e: any) {
-      toast({ title: "Hata", description: e.message ?? "İşlem gerçekleştirilemedi.", variant: "destructive" });
-    } finally {
-      setLoadingId(null);
-    }
-  };
-
   const handleDelete = async (userId: string) => {
     setLoadingId(userId);
     try {
@@ -254,15 +233,6 @@ export default function AdminUsers() {
                               >
                                 <CheckCircle2 className="h-4 w-4" />
                                 Onayla
-                              </DropdownMenuItem>
-                            )}
-                            {!(user as any).isPhoneVerified && (user as any).phone && (
-                              <DropdownMenuItem
-                                className="text-blue-600 focus:text-blue-600 gap-2"
-                                onClick={() => handleVerifyPhone(user.id)}
-                              >
-                                <ShieldCheck className="h-4 w-4" />
-                                Telefonu Doğrula
                               </DropdownMenuItem>
                             )}
                             {user.status === "active" && user.role !== "admin" && (
