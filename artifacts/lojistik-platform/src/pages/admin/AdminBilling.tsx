@@ -105,9 +105,9 @@ export default function AdminBilling() {
     setLoading(true);
     try {
       const [plansRes, invoicesRes, usersRes] = await Promise.all([
-        fetch(api("/admin/plans")),
-        fetch(api("/admin/invoices")),
-        fetch(api("/admin/users")),
+        fetch(api("/admin/plans"), { credentials: "include" }),
+        fetch(api("/admin/invoices"), { credentials: "include" }),
+        fetch(api("/users"), { credentials: "include" }),
       ]);
       const pd = await plansRes.json();
       const id = await invoicesRes.json();
@@ -139,6 +139,7 @@ export default function AdminBilling() {
     try {
       const res = await fetch(api(`/admin/plans/${editingPlan.id}`), {
         method: "PUT",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: planForm.name,
@@ -177,7 +178,7 @@ export default function AdminBilling() {
     fd.append("description", uploadForm.description);
 
     try {
-      const res = await fetch(api("/admin/invoices"), { method: "POST", body: fd });
+      const res = await fetch(api("/admin/invoices"), { method: "POST", credentials: "include", body: fd });
       const data = await res.json();
       if (res.ok && data.success) {
         toast({ title: "Fatura Yüklendi", description: "Fatura başarıyla üyeye eklendi." });
@@ -198,7 +199,7 @@ export default function AdminBilling() {
   async function deleteInvoice(id: number) {
     if (!confirm("Bu faturayı silmek istediğinizden emin misiniz?")) return;
     try {
-      const res = await fetch(api(`/admin/invoices/${id}`), { method: "DELETE" });
+      const res = await fetch(api(`/admin/invoices/${id}`), { method: "DELETE", credentials: "include" });
       if (res.ok) {
         toast({ title: "Fatura Silindi" });
         setInvoices(prev => prev.filter(i => i.id !== id));

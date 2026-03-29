@@ -204,10 +204,10 @@ export default function SubscriptionPage() {
     setLoading(true);
     try {
       const [plansRes, subRes, txnRes, invRes] = await Promise.all([
-        fetch(api("/payment/plans")),
-        fetch(api("/payment/subscription")),
-        fetch(api("/payment/transactions")),
-        fetch(api("/payment/invoices")),
+        fetch(api("/payment/plans"), { credentials: "include" }),
+        fetch(api("/payment/subscription"), { credentials: "include" }),
+        fetch(api("/payment/transactions"), { credentials: "include" }),
+        fetch(api("/payment/invoices"), { credentials: "include" }),
       ]);
       const plansData = await plansRes.json();
       const subData = await subRes.json();
@@ -241,6 +241,7 @@ export default function SubscriptionPage() {
     try {
       const returnUrl = `${window.location.origin}${BASE}api/payment/callback-3d`;
       const res = await fetch(api("/payment/initiate-3d"), {
+        credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -298,7 +299,7 @@ export default function SubscriptionPage() {
   async function cancelSubscription() {
     setCancelling(true);
     try {
-      const res = await fetch(api("/payment/cancel"), { method: "POST" });
+      const res = await fetch(api("/payment/cancel"), { method: "POST", credentials: "include" });
       const data = await res.json();
       if (res.ok && data.success) {
         toast({ title: "Abonelik İptal Edildi", description: data.message });
