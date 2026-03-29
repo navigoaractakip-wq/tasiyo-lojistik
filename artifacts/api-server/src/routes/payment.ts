@@ -3,42 +3,9 @@ import { db, subscriptionsTable, paymentTransactionsTable, platformSettingsTable
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../lib/auth-middleware";
 import { randomUUID } from "crypto";
+import { getPlansFromDb } from "./admin-billing";
 
 const router: IRouter = Router();
-
-// ── Subscription plans definition ────────────────────────────────────────────
-export const PLANS = [
-  {
-    id: "starter",
-    name: "Başlangıç",
-    price: 0,
-    currency: "TRY",
-    interval: "monthly",
-    features: ["Aylık 5 ilan", "Temel destek", "1 kullanıcı", "Standart listeleme"],
-    highlighted: false,
-    badge: null,
-  },
-  {
-    id: "corporate",
-    name: "Kurumsal",
-    price: 4999,
-    currency: "TRY",
-    interval: "monthly",
-    features: ["Sınırsız ilan", "Öncelikli destek", "5 kullanıcı", "Öne çıkan listeleme", "Gelişmiş analitik", "API erişimi"],
-    highlighted: true,
-    badge: "Çok Tercih Edilen",
-  },
-  {
-    id: "premium",
-    name: "Premium",
-    price: 9999,
-    currency: "TRY",
-    interval: "monthly",
-    features: ["Sınırsız ilan", "7/24 özel destek", "Sınırsız kullanıcı", "Öne çıkan listeleme", "Gelişmiş analitik", "API erişimi", "Özel entegrasyon", "Hesap yöneticisi"],
-    highlighted: false,
-    badge: "En Kapsamlı",
-  },
-];
 
 // ── Helper: get Paynet config from DB ────────────────────────────────────────
 async function getPaynetConfig() {
@@ -83,8 +50,9 @@ async function paynetPost(path: string, body: Record<string, unknown>, secretKey
 }
 
 // ── GET /payment/plans ───────────────────────────────────────────────────────
-router.get("/payment/plans", (_req, res) => {
-  res.json({ plans: PLANS });
+router.get("/payment/plans", async (_req, res) => {
+  const plans = await getPlansFromDb();
+  res.json({ plans });
 });
 
 // ── GET /payment/subscription ────────────────────────────────────────────────
@@ -121,7 +89,8 @@ router.post("/payment/initiate-3d", requireAuth, async (req: AuthRequest, res): 
   const userId = req.userId!;
   const { planId, cardOwner, cardNumber, expireMonth, expireYear, cvc, saveCard, returnUrl } = req.body;
 
-  const plan = PLANS.find(p => p.id === planId);
+  const plans = await getPlansFromDb();
+  const plan = plans.find(p => p.id === planId);
   if (!plan) {
     res.status(400).json({ success: false, message: "Geçersiz plan seçimi." });
     return;
@@ -270,7 +239,8 @@ router.post("/payment/callback-3d", async (req, res): Promise<void> => {
       const nextPayment = new Date(now);
       nextPayment.setMonth(nextPayment.getMonth() + 1);
 
-      const plan = PLANS.find(p => p.id === txn.plan);
+      const allPlans = await getPlansFromDb();
+      const plan = allPlans.find(p => p.id === txn.plan);
 
       // Upsert subscription
       const [existingSub] = await db
@@ -337,7 +307,8 @@ router.post("/payment/direct", requireAuth, async (req: AuthRequest, res): Promi
   const userId = req.userId!;
   const { planId, cardOwner, cardNumber, expireMonth, expireYear, cvc, saveCard } = req.body;
 
-  const plan = PLANS.find(p => p.id === planId);
+  const allPlansD = await getPlansFromDb();
+  const plan = allPlansD.find(p => p.id === planId);
   if (!plan || plan.price === 0) {
     res.status(400).json({ success: false, message: "Geçersiz plan." });
     return;

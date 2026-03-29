@@ -20,7 +20,7 @@ import {
 import {
   CheckCircle2, XCircle, CreditCard, Calendar, AlertTriangle,
   Loader2, Crown, Zap, Shield, Star, Receipt, ArrowRight,
-  ChevronRight, Ban, RefreshCw,
+  ChevronRight, Ban, RefreshCw, Download, FileText,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -65,6 +65,19 @@ interface Transaction {
   bankName: string | null;
   errorMessage: string | null;
   createdAt: string;
+}
+
+interface Invoice {
+  id: number;
+  invoiceNo: string | null;
+  amount: number | null;
+  currency: string;
+  description: string | null;
+  originalName: string;
+  mimeType: string;
+  fileSize: number | null;
+  uploadedAt: string;
+  transactionId: number | null;
 }
 
 interface CardForm {
@@ -140,6 +153,7 @@ export default function SubscriptionPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -172,21 +186,38 @@ export default function SubscriptionPage() {
     }
   }, [paymentResult]);
 
+  function downloadInvoice(id: number, name: string) {
+    const link = document.createElement("a");
+    link.href = api(`/payment/invoices/${id}/download`);
+    link.download = name;
+    link.click();
+  }
+
+  function fmtSize(b: number | null | undefined) {
+    if (!b) return "";
+    if (b < 1024) return `${b} B`;
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+    return `${(b / 1024 / 1024).toFixed(1)} MB`;
+  }
+
   async function loadAll() {
     setLoading(true);
     try {
-      const [plansRes, subRes, txnRes] = await Promise.all([
+      const [plansRes, subRes, txnRes, invRes] = await Promise.all([
         fetch(api("/payment/plans")),
         fetch(api("/payment/subscription")),
         fetch(api("/payment/transactions")),
+        fetch(api("/payment/invoices")),
       ]);
       const plansData = await plansRes.json();
       const subData = await subRes.json();
       const txnData = await txnRes.json();
+      const invData = await invRes.json();
 
       setPlans(plansData.plans ?? []);
       setSubscription(subData.subscription ?? null);
       setTransactions(txnData.transactions ?? []);
+      setInvoices(invData.invoices ?? []);
     } catch {
       toast({ title: "Hata", description: "Veriler yüklenemedi.", variant: "destructive" });
     } finally {
@@ -520,6 +551,70 @@ export default function SubscriptionPage() {
                       </TableRow>
                     );
                   })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Invoices from Admin */}
+      <Card className="shadow-sm">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-orange-500" />
+            <CardTitle className="text-lg">Faturalarım</CardTitle>
+          </div>
+          <CardDescription>Yönetici tarafından yüklenen faturalarınızı görüntüleyip indirebilirsiniz</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {invoices.length === 0 ? (
+            <div className="text-center py-10 border border-dashed rounded-xl">
+              <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-slate-500 text-sm font-medium">Henüz fatura bulunmuyor</p>
+              <p className="text-slate-400 text-xs mt-1">Faturalarınız hazırlandığında burada görünecektir</p>
+            </div>
+          ) : (
+            <div className="rounded-lg border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead>Tarih</TableHead>
+                    <TableHead>Fatura No</TableHead>
+                    <TableHead>Açıklama</TableHead>
+                    <TableHead>Dosya</TableHead>
+                    <TableHead className="text-right">Tutar</TableHead>
+                    <TableHead className="text-center">İndir</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoices.map(inv => (
+                    <TableRow key={inv.id}>
+                      <TableCell className="text-sm text-slate-600">{fmtDate(inv.uploadedAt)}</TableCell>
+                      <TableCell className="text-sm font-mono font-medium text-slate-700">{inv.invoiceNo ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-slate-600">{inv.description ?? "—"}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-red-400" />
+                          <span className="text-sm text-slate-700 max-w-[150px] truncate">{inv.originalName}</span>
+                          {inv.fileSize && <span className="text-xs text-slate-400">({fmtSize(inv.fileSize)})</span>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {inv.amount != null ? fmt(inv.amount) : "—"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-3 text-blue-600 border-blue-200 hover:bg-blue-50"
+                          onClick={() => downloadInvoice(inv.id, inv.originalName)}
+                        >
+                          <Download className="w-3.5 h-3.5 mr-1" /> İndir
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>

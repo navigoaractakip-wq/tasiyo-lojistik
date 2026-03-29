@@ -13,6 +13,7 @@ import settingsRouter from "./settings";
 import contractsRouter from "./contracts";
 import supportRouter from "./support";
 import paymentRouter from "./payment";
+import adminBillingRouter from "./admin-billing";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(settingsRouter);
 router.use(contractsRouter);
 router.use(supportRouter);
 router.use(paymentRouter);
+router.use(adminBillingRouter);
 
 export default router;

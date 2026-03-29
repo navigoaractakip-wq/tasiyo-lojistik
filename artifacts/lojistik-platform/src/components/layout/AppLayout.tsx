@@ -233,6 +233,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     { href: "/admin/loads", label: "İlan Yönetimi", icon: Package },
     { href: "/admin/users", label: "Kullanıcılar", icon: Users },
     { href: "/admin/stats", label: "Raporlar", icon: BarChart3 },
+    { href: "/admin/billing", label: "Fatura & Planlar", icon: CreditCard },
     { href: "/admin/destek", label: "Destek Talepleri", icon: HeadphonesIcon },
     { href: "/admin/sozlesmeler", label: "Sözleşmeler", icon: ScrollText },
     { href: "/admin/system", label: "Sistem", icon: ShieldAlert },

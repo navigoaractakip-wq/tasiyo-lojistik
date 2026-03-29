@@ -21,6 +21,7 @@ import AdminLoads from "@/pages/admin/AdminLoads";
 import AdminStats from "@/pages/admin/AdminStats";
 import AdminSystem from "@/pages/admin/AdminSystem";
 import AdminSettings from "@/pages/admin/AdminSettings";
+import AdminBilling from "@/pages/admin/AdminBilling";
 import AdminContracts from "@/pages/admin/AdminContracts";
 import AdminSupport from "@/pages/admin/AdminSupport";
 
@@ -147,6 +148,11 @@ function Router() {
       <Route path="/admin/system">
         <ProtectedRoute allowedRoles={["admin"]}>
           <AppLayout><AdminSystem /></AppLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/billing">
+        <ProtectedRoute allowedRoles={["admin"]}>
+          <AppLayout><AdminBilling /></AppLayout>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/settings">
