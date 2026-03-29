@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { encrypt, decrypt, maskSensitive } from "../lib/crypto";
 import {
   db,
   usersTable,
@@ -102,6 +103,7 @@ router.get("/users/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const decryptedLicense = user.driverLicenseToken ? decrypt(user.driverLicenseToken) : undefined;
   res.json(
     GetUserResponse.parse({
       id: String(user.id),
@@ -115,6 +117,9 @@ router.get("/users/:id", async (req, res): Promise<void> => {
       website: user.website ?? undefined,
       address: user.address ?? undefined,
       taxNumber: user.taxNumber ?? undefined,
+      taxOffice: user.taxOffice ?? undefined,
+      driverLicenseMasked: decryptedLicense ? maskSensitive(decryptedLicense) : undefined,
+      driverDocuments: user.driverDocuments ?? undefined,
       vehicleTypes: user.vehicleTypes ?? undefined,
       vehiclePlate: user.vehiclePlate ?? undefined,
       isPhoneVerified: user.isPhoneVerified ?? false,
@@ -148,7 +153,10 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
   if (parsed.data.avatarUrl !== undefined) updates.avatarUrl = parsed.data.avatarUrl;
   if (parsed.data.website !== undefined) updates.website = parsed.data.website;
   if (parsed.data.address !== undefined) updates.address = parsed.data.address;
-  if (parsed.data.taxNumber !== undefined) updates.taxNumber = parsed.data.taxNumber;
+  if (parsed.data.taxNumber !== undefined) updates.taxNumber = parsed.data.taxNumber ? encrypt(parsed.data.taxNumber) : parsed.data.taxNumber;
+  if (parsed.data.taxOffice !== undefined) updates.taxOffice = parsed.data.taxOffice;
+  if (parsed.data.driverLicense !== undefined) updates.driverLicenseToken = parsed.data.driverLicense ? encrypt(parsed.data.driverLicense) : null;
+  if (parsed.data.driverDocuments !== undefined) updates.driverDocuments = parsed.data.driverDocuments;
   if (parsed.data.vehicleTypes !== undefined) updates.vehicleTypes = parsed.data.vehicleTypes;
   if (parsed.data.vehiclePlate !== undefined) updates.vehiclePlate = parsed.data.vehiclePlate;
   if (parsed.data.notificationSettings !== undefined) updates.notificationSettings = parsed.data.notificationSettings;
@@ -165,6 +173,7 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const updatedLicense = user.driverLicenseToken ? decrypt(user.driverLicenseToken) : undefined;
   res.json(
     UpdateUserResponse.parse({
       id: String(user.id),
@@ -177,12 +186,17 @@ router.patch("/users/:id", async (req, res): Promise<void> => {
       avatarUrl: user.avatarUrl ?? undefined,
       website: user.website ?? undefined,
       address: user.address ?? undefined,
-      taxNumber: user.taxNumber ?? undefined,
+      taxNumber: user.taxNumber ? maskSensitive(decrypt(user.taxNumber)) : undefined,
+      taxOffice: user.taxOffice ?? undefined,
+      driverLicenseMasked: updatedLicense ? maskSensitive(updatedLicense) : undefined,
+      driverDocuments: user.driverDocuments ?? undefined,
       vehicleTypes: user.vehicleTypes ?? undefined,
       vehiclePlate: user.vehiclePlate ?? undefined,
       isPhoneVerified: user.isPhoneVerified ?? false,
       notificationSettings: user.notificationSettings ?? undefined,
       billingInfo: user.billingInfo ?? undefined,
+      rating: user.rating ?? undefined,
+      totalShipments: user.totalShipments ?? undefined,
       createdAt: user.createdAt,
     })
   );

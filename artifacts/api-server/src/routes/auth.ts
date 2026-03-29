@@ -4,6 +4,7 @@ import { db, otpCodesTable, userSessionsTable, usersTable, platformSettingsTable
 import { eq, and, gt } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { sendSms, sendEmail } from "../lib/notifier";
+import { decrypt, maskSensitive } from "../lib/crypto";
 import {
   SendOtpBody,
   SendOtpResponse,
@@ -26,6 +27,7 @@ function generateToken(): string {
 }
 
 function mapUser(u: typeof usersTable.$inferSelect) {
+  const decryptedLicense = u.driverLicenseToken ? decrypt(u.driverLicenseToken) : undefined;
   return {
     id: String(u.id),
     name: u.name,
@@ -38,6 +40,9 @@ function mapUser(u: typeof usersTable.$inferSelect) {
     website: u.website ?? undefined,
     address: u.address ?? undefined,
     taxNumber: u.taxNumber ?? undefined,
+    taxOffice: u.taxOffice ?? undefined,
+    driverLicenseMasked: decryptedLicense ? maskSensitive(decryptedLicense) : undefined,
+    driverDocuments: u.driverDocuments ?? undefined,
     vehicleTypes: u.vehicleTypes ?? undefined,
     vehiclePlate: u.vehiclePlate ?? undefined,
     isPhoneVerified: u.isPhoneVerified ?? false,

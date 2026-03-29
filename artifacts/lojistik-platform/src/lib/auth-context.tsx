@@ -21,6 +21,9 @@ export interface AuthUser {
   website?: string | null;
   address?: string | null;
   taxNumber?: string | null;
+  taxOffice?: string | null;
+  driverLicenseMasked?: string | null;
+  driverDocuments?: string | null;
   vehicleTypes?: string | null;
   vehiclePlate?: string | null;
   isPhoneVerified?: boolean;
@@ -74,6 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         website: data.website,
         address: data.address,
         taxNumber: data.taxNumber,
+        taxOffice: (data as { taxOffice?: string }).taxOffice ?? null,
+        driverLicenseMasked: (data as { driverLicenseMasked?: string }).driverLicenseMasked ?? null,
+        driverDocuments: (data as { driverDocuments?: string }).driverDocuments ?? null,
         vehicleTypes: data.vehicleTypes,
         vehiclePlate: (data as { vehiclePlate?: string }).vehiclePlate,
         isPhoneVerified: (data as { isPhoneVerified?: boolean }).isPhoneVerified ?? false,
