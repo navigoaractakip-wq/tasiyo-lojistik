@@ -19,7 +19,7 @@ import {
 import {
   Search, MoreHorizontal, CheckCircle2, Ban, Loader2, Users, Trash2, UserCheck,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function AdminUsers() {
   const { token } = useAuth();
@@ -161,6 +161,7 @@ export default function AdminUsers() {
                     <TableCell className="py-3">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10 border border-border">
+                          <AvatarImage src={(user as any).avatarUrl ?? ""} alt={user.name} className="object-cover" />
                           <AvatarFallback className="bg-primary/10 text-primary font-medium">
                             {user.name.substring(0, 2).toUpperCase()}
                           </AvatarFallback>

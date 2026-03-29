@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -48,6 +48,7 @@ export default function CorporateOffers() {
     driverName: o.driver?.name ?? o.driverName ?? "—",
     driverEmail: o.driver?.email ?? "",
     driverPhone: o.driver?.phone ?? "",
+    driverAvatarUrl: o.driver?.avatarUrl ?? "",
     loadTitle: o.load?.title ?? o.loadTitle ?? "—",
     loadPickupDate: o.load?.pickupDate,
     driverRating: o.driver?.rating ?? o.driverRating ?? 0,
@@ -236,11 +237,19 @@ export default function CorporateOffers() {
                 <div className="flex flex-col md:flex-row md:items-start gap-4">
                   {/* Driver Info */}
                   <div className="flex items-start gap-3 flex-1">
-                    <Avatar className="h-12 w-12 border-2 border-border shrink-0">
-                      <AvatarFallback className={`font-bold ${isAccepted ? "bg-green-100 text-green-700" : "bg-primary/10 text-primary"}`}>
-                        {offer.driverName.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative shrink-0">
+                      <Avatar className={`h-14 w-14 border-2 shrink-0 shadow-sm ${isAccepted ? "border-green-400 ring-2 ring-green-200" : "border-border"}`}>
+                        <AvatarImage src={offer.driverAvatarUrl} alt={offer.driverName} className="object-cover" />
+                        <AvatarFallback className={`font-bold text-base ${isAccepted ? "bg-green-100 text-green-700" : "bg-primary/10 text-primary"}`}>
+                          {offer.driverName.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {isAccepted && (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                          <CheckCircle2 className="w-3 h-3 text-white" />
+                        </span>
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold">{offer.driverName}</p>
@@ -260,12 +269,31 @@ export default function CorporateOffers() {
 
                       {/* İletişim bilgileri — yalnızca kabul edilmiş tekliflerde */}
                       {isAccepted && (
-                        <div className="mt-3 space-y-1.5 bg-green-50 border border-green-100 rounded-xl p-3">
-                          <p className="text-xs font-semibold text-green-700 mb-1">📞 Şoför İletişim Bilgileri</p>
+                        <div className="mt-3 bg-green-50 border border-green-100 rounded-xl p-3">
+                          <div className="flex items-center gap-3 mb-3 pb-3 border-b border-green-100">
+                            <Avatar className="h-14 w-14 border-2 border-green-300 shadow">
+                              <AvatarImage src={offer.driverAvatarUrl} alt={offer.driverName} className="object-cover" />
+                              <AvatarFallback className="bg-green-100 text-green-700 font-bold text-lg">
+                                {offer.driverName.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-semibold text-green-800 text-sm">{offer.driverName}</p>
+                              <p className="text-xs text-green-600">{offer.vehicleType} · {offer.vehiclePlate}</p>
+                              {offer.driverRating > 0 && (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                                  <span className="text-xs text-green-700 font-medium">{offer.driverRating}</span>
+                                  <span className="text-xs text-green-500">({offer.driverShipments} sefer)</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs font-semibold text-green-700 mb-1.5">📞 İletişim Bilgileri</p>
                           {offer.driverPhone && (
                             <a
                               href={`tel:${offer.driverPhone}`}
-                              className="flex items-center gap-2 text-sm text-green-800 hover:text-green-600 font-medium"
+                              className="flex items-center gap-2 text-sm text-green-800 hover:text-green-600 font-medium mb-1.5"
                             >
                               <Phone className="w-3.5 h-3.5 shrink-0" />
                               {offer.driverPhone}
