@@ -481,7 +481,7 @@ export default function DriverOffers() {
             <DialogDescription className="text-sm text-muted-foreground">
               Bu teklifi geri çekmek istediğinizden emin misiniz?
               {(() => {
-                const offer = [...(pendingOffers as any[]), ...(historyOffers as any[])].find((o: any) => o.id === withdrawTarget);
+                const offer = [...(pendingOffers as any[]), ...(allHistoryOffers as any[])].find((o: any) => o.id === withdrawTarget);
                 return offer?.status === "accepted"
                   ? " Kabul edilmiş teklif geri çekilirse yük ilanı tekrar aktif duruma geçer."
                   : " Geri çekilen teklifler yeniden aktifleştirilemez. Aynı ilana yeni bir teklif verebilirsiniz.";
