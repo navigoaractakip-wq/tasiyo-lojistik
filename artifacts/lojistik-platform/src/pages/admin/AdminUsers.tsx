@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Search, MoreHorizontal, CheckCircle2, Ban, Loader2, Users, Trash2, UserCheck,
+  Phone, ShieldCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -51,6 +52,27 @@ export default function AdminUsers() {
   const handleStatusChange = (userId: string, newStatus: "active" | "suspended") => {
     setLoadingId(userId);
     updateUser({ id: userId, data: { status: newStatus } });
+  };
+
+  const handleVerifyPhone = async (userId: string) => {
+    setLoadingId(userId);
+    try {
+      const base = import.meta.env.BASE_URL ?? "/";
+      const res = await fetch(`${base}api/admin/users/${userId}/verify-phone`.replace(/\/+/g, "/").replace(":/", "://"), {
+        method: "PATCH",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "İşlem başarısız");
+      }
+      queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+      toast({ title: "Telefon doğrulandı", description: "Kullanıcının telefonu manuel olarak doğrulanmış işaretlendi." });
+    } catch (e: any) {
+      toast({ title: "Hata", description: e.message ?? "İşlem gerçekleştirilemedi.", variant: "destructive" });
+    } finally {
+      setLoadingId(null);
+    }
   };
 
   const handleDelete = async (userId: string) => {
@@ -172,6 +194,17 @@ export default function AdminUsers() {
                           {user.company && (
                             <p className="text-xs text-muted-foreground">{user.company}</p>
                           )}
+                          {(user as any).phone && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <Phone className="w-3 h-3" />
+                              {(user as any).phone}
+                              {(user as any).isPhoneVerified ? (
+                                <ShieldCheck className="w-3 h-3 text-green-500" title="Doğrulandı" />
+                              ) : (
+                                <span className="text-amber-500 font-medium">(Doğrulanmadı)</span>
+                              )}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </TableCell>
@@ -213,7 +246,7 @@ export default function AdminUsers() {
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuContent align="end" className="w-52">
                             {user.status === "pending" && (
                               <DropdownMenuItem
                                 className="text-green-600 focus:text-green-600 gap-2"
@@ -221,6 +254,15 @@ export default function AdminUsers() {
                               >
                                 <CheckCircle2 className="h-4 w-4" />
                                 Onayla
+                              </DropdownMenuItem>
+                            )}
+                            {!(user as any).isPhoneVerified && (user as any).phone && (
+                              <DropdownMenuItem
+                                className="text-blue-600 focus:text-blue-600 gap-2"
+                                onClick={() => handleVerifyPhone(user.id)}
+                              >
+                                <ShieldCheck className="h-4 w-4" />
+                                Telefonu Doğrula
                               </DropdownMenuItem>
                             )}
                             {user.status === "active" && user.role !== "admin" && (

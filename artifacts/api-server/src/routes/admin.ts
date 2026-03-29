@@ -138,6 +138,22 @@ router.get("/admin/stats", async (_req, res): Promise<void> => {
   res.json(GetAdminStatsResponse.parse(stats));
 });
 
+// PATCH /admin/users/:id/verify-phone — Telefonu manuel olarak doğrulanmış işaretle
+router.patch("/admin/users/:id/verify-phone", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Geçersiz kullanıcı ID" }); return; }
+
+  const [updated] = await db
+    .update(usersTable)
+    .set({ isPhoneVerified: true })
+    .where(eq(usersTable.id, id))
+    .returning({ id: usersTable.id, name: usersTable.name, phone: usersTable.phone, isPhoneVerified: usersTable.isPhoneVerified });
+
+  if (!updated) { res.status(404).json({ error: "Kullanıcı bulunamadı" }); return; }
+
+  res.json({ success: true, user: updated });
+});
+
 // GET /admin/pending-otps — Teslim edilemeyen (sentVia=null) ve süresi dolmamış OTP'leri döner
 router.get("/admin/pending-otps", async (_req, res): Promise<void> => {
   const now = new Date();
